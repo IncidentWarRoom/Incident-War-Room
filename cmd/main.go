@@ -28,6 +28,20 @@ func main() {
 		return c.Send("Incident War Room is running.")
 	})
 
+	bot.Handle("/incident", func(c telebot.Context) error {
+		args := c.Args()
+		if len(args) == 0 {
+			return c.Send("Usage:\n/incident create — open a new incident")
+		}
+
+		switch args[0] {
+		case "create":
+			return c.Send("[stub] Incident created. (not implemented yet)")
+		default:
+			return c.Send("Unknown subcommand. Try /incident create")
+		}
+	})
+
 	fmt.Println("Bot started")
 	bot.Start()
 }
