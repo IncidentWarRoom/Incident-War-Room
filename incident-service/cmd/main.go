@@ -17,7 +17,7 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
-	b, err := telebot.NewBot(telebot.Settings{
+	tgBot, err := telebot.NewBot(telebot.Settings{
 		Token:  cfg.BotToken,
 		Poller: &telebot.LongPoller{Timeout: 10 * time.Second},
 	})
@@ -25,8 +25,8 @@ func main() {
 		log.Fatalf("bot: %v", err)
 	}
 
-	bot.Register(b)
+	bot.Register(tgBot)
 
 	fmt.Println("Bot started")
-	b.Start()
+	tgBot.Start()
 }
