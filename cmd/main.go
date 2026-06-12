@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"gopkg.in/telebot.v3"
@@ -31,14 +32,15 @@ func main() {
 	bot.Handle("/incident", func(c telebot.Context) error {
 		args := c.Args()
 		if len(args) == 0 {
-			return c.Send("Usage:\n/incident create — open a new incident")
+			return c.Send("Usage:\n/incident create — open a new incident\n/incident <message> — add an update to the timeline")
 		}
 
 		switch args[0] {
 		case "create":
 			return c.Send("[stub] Incident created. (not implemented yet)")
 		default:
-			return c.Send("Unknown subcommand. Try /incident create")
+			message := strings.Join(args, " ")
+			return c.Send("[stub] Update added to timeline: " + message + " (not implemented yet)")
 		}
 	})
 
