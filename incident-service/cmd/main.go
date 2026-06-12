@@ -9,6 +9,7 @@ import (
 
 	"github.com/cQu1x/Incident-War-Room/internal/bot"
 	"github.com/cQu1x/Incident-War-Room/internal/config"
+	"github.com/cQu1x/Incident-War-Room/internal/errs"
 )
 
 func main() {
@@ -22,7 +23,7 @@ func main() {
 		Poller: &telebot.LongPoller{Timeout: 10 * time.Second},
 	})
 	if err != nil {
-		log.Fatalf("bot: %v", err)
+		log.Fatalf("%v", errs.Wrapf(errs.KindUnavailable, "main", err, "connect to Telegram Bot API"))
 	}
 
 	bot.Register(tgBot)
