@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"gopkg.in/telebot.v3"
 
+	"github.com/cQu1x/Incident-War-Room/internal/bot"
 	"github.com/cQu1x/Incident-War-Room/internal/config"
 )
 
@@ -17,7 +17,7 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
-	bot, err := telebot.NewBot(telebot.Settings{
+	b, err := telebot.NewBot(telebot.Settings{
 		Token:  cfg.BotToken,
 		Poller: &telebot.LongPoller{Timeout: 10 * time.Second},
 	})
@@ -25,31 +25,8 @@ func main() {
 		log.Fatalf("bot: %v", err)
 	}
 
-	bot.Handle("/start", func(c telebot.Context) error {
-		return c.Send("Incident War Room is running.")
-	})
-
-	bot.Handle("/incident", func(c telebot.Context) error {
-		args := c.Args()
-		if len(args) == 0 {
-			return c.Send("Usage:\n/incident create — open a new incident\n/incident close — close the active incident\n/incident <message> — add an update to the timeline")
-		}
-
-		switch args[0] {
-		case "create":
-			return c.Send("[stub] Incident created. (not implemented yet)")
-		case "close":
-			return c.Send("[stub] Incident closed. (not implemented yet)")
-		default:
-			message := strings.Join(args, " ")
-			return c.Send("[stub] Update added to timeline: " + message + " (not implemented yet)")
-		}
-	})
-
-	bot.Handle("/timeline", func(c telebot.Context) error {
-		return c.Send("[stub] Incident timeline is empty. (not implemented yet)")
-	})
+	bot.Register(b)
 
 	fmt.Println("Bot started")
-	bot.Start()
+	b.Start()
 }
