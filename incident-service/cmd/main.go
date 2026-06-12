@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/bot"
 	"github.com/cQu1x/Incident-War-Room/internal/config"
 	"github.com/cQu1x/Incident-War-Room/internal/errs"
+	"github.com/cQu1x/Incident-War-Room/internal/repository"
 )
 
 func main() {
@@ -17,6 +19,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
+
+	ctx := context.Background()
+	pool, err := repository.NewPool(ctx, cfg.PostgresDSN())
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	defer pool.Close()
 
 	tgBot, err := telebot.NewBot(telebot.Settings{
 		Token:  cfg.BotToken,
