@@ -36,3 +36,6 @@ clean: ## Stop containers and remove db volume
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
+
+ssh:
+	ssh root@10.93.27.19
