@@ -3,6 +3,8 @@ package config
 import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/joho/godotenv"
+
+	"github.com/cQu1x/Incident-War-Room/internal/errs"
 )
 
 type Config struct {
@@ -20,7 +22,7 @@ func Load() (*Config, error) {
 
 	var cfg Config
 	if err := cleanenv.ReadEnv(&cfg); err != nil {
-		return nil, err
+		return nil, errs.Wrapf(errs.KindInternal, "config.Load", err, "read environment")
 	}
 	return &cfg, nil
 }
