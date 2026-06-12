@@ -1,0 +1,5 @@
+.env
+.idea/
+*.exe
+*.out
+incident-service
