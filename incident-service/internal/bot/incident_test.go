@@ -17,9 +17,14 @@ func TestHandleIncident(t *testing.T) {
 			wantPart: "Usage:",
 		},
 		{
-			name:     "create",
+			name:     "create without description asks for one",
 			args:     []string{"create"},
-			wantPart: "Incident created",
+			wantPart: "Please add a description",
+		},
+		{
+			name:     "create with description shows it on the card",
+			args:     []string{"create", "db", "is", "down"},
+			wantPart: "db is down",
 		},
 		{
 			name:     "close",
