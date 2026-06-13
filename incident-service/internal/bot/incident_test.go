@@ -24,7 +24,7 @@ func TestHandleIncident(t *testing.T) {
 		{
 			name:     "close",
 			args:     []string{"close"},
-			wantPart: "Incident closed",
+			wantPart: "<b>Incident closed</b>",
 		},
 		{
 			name:     "message adds timeline update",

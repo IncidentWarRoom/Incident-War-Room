@@ -31,7 +31,18 @@ func HandleIncident(c telebot.Context) error {
 		}
 		return c.Send(response.IncidentCreated(inc), telebot.ModeHTML)
 	case "close":
-		return c.Send("[stub] Incident closed. (not implemented yet)")
+		// Persistence is not wired yet; build a placeholder closed incident so
+		// the formatted response can already be exercised end to end.
+		now := time.Now()
+		inc := incident.Incident{
+			ID:        uuid.New(),
+			Title:     "Untitled incident",
+			Severity:  incident.SeverityMedium,
+			Status:    incident.StatusClosed,
+			CreatedAt: now,
+			ClosedAt:  &now,
+		}
+		return c.Send(response.IncidentClosed(inc), telebot.ModeHTML)
 	default:
 		message := strings.Join(args, " ")
 		return c.Send("[stub] Update added to timeline: " + message + " (not implemented yet)")
