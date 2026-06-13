@@ -2,7 +2,11 @@ package bot
 
 import (
 	"strings"
+	"time"
 
+	"github.com/cQu1x/Incident-War-Room/internal/bot/response"
+	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
+	"github.com/google/uuid"
 	"gopkg.in/telebot.v3"
 )
 
@@ -16,7 +20,16 @@ func HandleIncident(c telebot.Context) error {
 
 	switch args[0] {
 	case "create":
-		return c.Send("[stub] Incident created. (not implemented yet)")
+		// Persistence is not wired yet; build a placeholder incident so the
+		// formatted response can already be exercised end to end.
+		inc := incident.Incident{
+			ID:        uuid.New(),
+			Title:     "Untitled incident",
+			Severity:  incident.SeverityMedium,
+			Status:    incident.StatusActive,
+			CreatedAt: time.Now(),
+		}
+		return c.Send(response.IncidentCreated(inc), telebot.ModeHTML)
 	case "close":
 		return c.Send("[stub] Incident closed. (not implemented yet)")
 	default:

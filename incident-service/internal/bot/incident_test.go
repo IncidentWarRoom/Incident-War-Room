@@ -19,7 +19,7 @@ func TestHandleIncident(t *testing.T) {
 		{
 			name:     "create",
 			args:     []string{"create"},
-			wantPart: "Incident created",
+			wantPart: "<b>Incident created</b>",
 		},
 		{
 			name:     "close",
