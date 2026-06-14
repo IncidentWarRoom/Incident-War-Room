@@ -8,8 +8,6 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 )
 
-// IncidentClosed renders the confirmation shown when an incident is closed,
-// including how long it stayed open when the closing time is known.
 func IncidentClosed(inc incident.Incident) string {
 	var b strings.Builder
 
@@ -27,8 +25,6 @@ func IncidentClosed(inc incident.Incident) string {
 	return b.String()
 }
 
-// formatDuration renders a duration as a compact "1h 5m" string, dropping
-// zero-valued leading units. Sub-minute durations render as "<1m".
 func formatDuration(d time.Duration) string {
 	if d < time.Minute {
 		return "<1m"

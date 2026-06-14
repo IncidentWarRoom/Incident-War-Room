@@ -8,8 +8,6 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 )
 
-// Timeline renders the chronological list of events for an incident. With no
-// events it returns an "empty timeline" notice instead of a bare header.
 func Timeline(inc incident.Incident, events []event.Event) string {
 	var b strings.Builder
 

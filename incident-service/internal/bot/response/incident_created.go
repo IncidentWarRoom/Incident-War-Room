@@ -7,7 +7,6 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 )
 
-// IncidentCreated renders the confirmation shown when a new incident is opened.
 func IncidentCreated(inc incident.Incident) string {
 	var b strings.Builder
 

@@ -20,8 +20,6 @@ func HandleIncident(c telebot.Context) error {
 
 	switch args[0] {
 	case "create":
-		// Persistence is not wired yet; build a placeholder incident so the
-		// formatted response can already be exercised end to end.
 		inc := incident.Incident{
 			ID:        uuid.New(),
 			Title:     "Untitled incident",
@@ -31,8 +29,6 @@ func HandleIncident(c telebot.Context) error {
 		}
 		return c.Send(response.IncidentCreated(inc), telebot.ModeHTML)
 	case "close":
-		// Persistence is not wired yet; build a placeholder closed incident so
-		// the formatted response can already be exercised end to end.
 		now := time.Now()
 		inc := incident.Incident{
 			ID:        uuid.New(),

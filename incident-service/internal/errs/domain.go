@@ -1,7 +1,5 @@
 package errs
 
-// Sentinel errors for known business-rule failures.
-// Compare with errors.Is.
 var (
 	ErrIncidentNotFound      = New(KindNotFound, "incident", "incident not found")
 	ErrNoActiveIncident      = New(KindNotFound, "incident", "no active incident in this chat")

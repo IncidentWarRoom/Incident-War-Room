@@ -7,8 +7,6 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 )
 
-// ReportReady renders the notification sent once the PDF post-incident report
-// has been generated. When reportURL is empty the download link is omitted.
 func ReportReady(inc incident.Incident, reportURL string) string {
 	var b strings.Builder
 
