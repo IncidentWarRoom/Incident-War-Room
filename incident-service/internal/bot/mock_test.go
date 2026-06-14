@@ -6,8 +6,6 @@ import (
 	"gopkg.in/telebot.v3"
 )
 
-// mockContext implements only the telebot.Context methods the handlers use;
-// the embedded interface panics on anything else, which is what we want in tests.
 type mockContext struct {
 	telebot.Context
 	args []string

@@ -19,12 +19,12 @@ func TestHandleIncident(t *testing.T) {
 		{
 			name:     "create",
 			args:     []string{"create"},
-			wantPart: "Incident created",
+			wantPart: "<b>Incident created</b>",
 		},
 		{
 			name:     "close",
 			args:     []string{"close"},
-			wantPart: "Incident closed",
+			wantPart: "<b>Incident closed</b>",
 		},
 		{
 			name:     "message adds timeline update",
