@@ -18,7 +18,7 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
-	_ = godotenv.Load() // load .env if present, ignore error in production
+	_ = godotenv.Load()
 
 	var cfg Config
 	if err := cleanenv.ReadEnv(&cfg); err != nil {

@@ -2,10 +2,12 @@ package bot
 
 import (
 	"strings"
+	"time"
 
-	"gopkg.in/telebot.v3"
-
+	"github.com/cQu1x/Incident-War-Room/internal/bot/response"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
+	"github.com/google/uuid"
+	"gopkg.in/telebot.v3"
 )
 
 const incidentUsage = "Usage:\n/incident create <description> — open a new incident\n/incident close — close the active incident\n/incident <message> — add an update to the timeline"
@@ -25,7 +27,16 @@ func HandleIncident(c telebot.Context) error {
 		card := incidentCard(description, incident.SeverityMedium, incident.StatusActive)
 		return c.Send(card, incidentMenu)
 	case "close":
-		return c.Send("[stub] Incident closed. (not implemented yet)")
+		now := time.Now()
+		inc := incident.Incident{
+			ID:        uuid.New(),
+			Title:     "Untitled incident",
+			Severity:  incident.SeverityMedium,
+			Status:    incident.StatusClosed,
+			CreatedAt: now,
+			ClosedAt:  &now,
+		}
+		return c.Send(response.IncidentClosed(inc), telebot.ModeHTML)
 	default:
 		message := strings.Join(args, " ")
 		return c.Send("[stub] Update added to timeline: " + message + " (not implemented yet)")
