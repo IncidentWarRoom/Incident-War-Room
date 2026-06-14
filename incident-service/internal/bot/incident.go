@@ -10,7 +10,7 @@ import (
 	"gopkg.in/telebot.v3"
 )
 
-const incidentUsage = "Usage:\n/incident create — open a new incident\n/incident close — close the active incident\n/incident <message> — add an update to the timeline"
+const incidentUsage = "Usage:\n/incident create <description> — open a new incident\n/incident close — close the active incident\n/incident <message> — add an update to the timeline"
 
 func HandleIncident(c telebot.Context) error {
 	args := c.Args()
@@ -20,14 +20,12 @@ func HandleIncident(c telebot.Context) error {
 
 	switch args[0] {
 	case "create":
-		inc := incident.Incident{
-			ID:        uuid.New(),
-			Title:     "Untitled incident",
-			Severity:  incident.SeverityMedium,
-			Status:    incident.StatusActive,
-			CreatedAt: time.Now(),
+		description := strings.TrimSpace(strings.Join(args[1:], " "))
+		if description == "" {
+			return c.Send("Please add a description:\n/incident create <what happened>")
 		}
-		return c.Send(response.IncidentCreated(inc), telebot.ModeHTML)
+		card := incidentCard(description, incident.SeverityMedium, incident.StatusActive)
+		return c.Send(card, incidentMenu)
 	case "close":
 		now := time.Now()
 		inc := incident.Incident{
