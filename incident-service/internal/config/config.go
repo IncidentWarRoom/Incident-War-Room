@@ -18,6 +18,8 @@ type Config struct {
 	PostgresDB       string `env:"POSTGRES_DB"       env-required:"true"`
 	PostgresUser     string `env:"POSTGRES_USER"     env-required:"true"`
 	PostgresPassword string `env:"POSTGRES_PASSWORD" env-required:"true"`
+
+	ReportServiceURL string `env:"REPORT_SERVICE_URL" env-default:"http://localhost:8000"`
 }
 
 func Load() (*Config, error) {

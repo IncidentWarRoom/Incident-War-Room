@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/cQu1x/Incident-War-Room/internal/domain/event"
 	"github.com/cQu1x/Incident-War-Room/internal/errs"
@@ -13,14 +12,11 @@ import (
 
 // EventRepository stores timeline events in the "incident_events" table.
 type EventRepository struct {
-	pool *pgxpool.Pool
+	db Querier
 }
 
-// Compile-time check that EventRepository satisfies the domain interface.
-var _ event.Repository = (*EventRepository)(nil)
-
-func NewEventRepository(pool *pgxpool.Pool) *EventRepository {
-	return &EventRepository{pool: pool}
+func NewEventRepository(db Querier) *EventRepository {
+	return &EventRepository{db: db}
 }
 
 // Create inserts a new timeline event. ID and CreatedAt are generated
@@ -31,7 +27,7 @@ func (r *EventRepository) Create(ctx context.Context, e *event.Event) error {
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at`
 
-	err := r.pool.
+	err := r.db.
 		QueryRow(ctx, query, e.IncidentID, e.Type, e.AuthorID, e.Username, e.Message).
 		Scan(&e.ID, &e.CreatedAt)
 	if err != nil {
@@ -50,7 +46,7 @@ func (r *EventRepository) ListByIncidentID(ctx context.Context, incidentID uuid.
 		WHERE incident_id = $1
 		ORDER BY created_at ASC`
 
-	rows, err := r.pool.Query(ctx, query, incidentID)
+	rows, err := r.db.Query(ctx, query, incidentID)
 	if err != nil {
 		return nil, errs.Wrapf(errs.KindInternal, "repository.Event.ListByIncidentID", err, "select events")
 	}
@@ -72,7 +68,7 @@ func (r *EventRepository) ListParticipants(ctx context.Context, incidentID uuid.
 		FROM incident_events
 		WHERE incident_id = $1 AND author_id IS NOT NULL`
 
-	rows, err := r.pool.Query(ctx, query, incidentID)
+	rows, err := r.db.Query(ctx, query, incidentID)
 	if err != nil {
 		return nil, errs.Wrapf(errs.KindInternal, "repository.Event.ListParticipants", err, "select participants")
 	}
