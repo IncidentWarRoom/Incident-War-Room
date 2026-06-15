@@ -10,7 +10,7 @@ type Event struct {
 	ID         uuid.UUID
 	IncidentID uuid.UUID
 	Type       EventType
-	UserID     *int64
+	AuthorID   *int64
 	Username   string
 	Message    string
 	CreatedAt  time.Time
