@@ -1,0 +1,358 @@
+package service
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/cQu1x/Incident-War-Room/internal/domain/event"
+	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
+	"github.com/cQu1x/Incident-War-Room/internal/domain/report"
+	"github.com/cQu1x/Incident-War-Room/internal/errs"
+)
+
+// --- in-memory fakes -------------------------------------------------------
+
+// fakeIncidents is an in-memory incident.Repository that reproduces the
+// business rules the use cases rely on: one active incident per chat and the
+// active/closed transition.
+type fakeIncidents struct {
+	byID map[uuid.UUID]*incident.Incident
+}
+
+func newFakeIncidents() *fakeIncidents {
+	return &fakeIncidents{byID: make(map[uuid.UUID]*incident.Incident)}
+}
+
+func (f *fakeIncidents) Create(_ context.Context, inc *incident.Incident) error {
+	for _, existing := range f.byID {
+		if existing.ChatID == inc.ChatID && existing.Status == incident.StatusActive {
+			return errs.ErrIncidentAlreadyActive
+		}
+	}
+	inc.ID = uuid.New()
+	stored := *inc
+	f.byID[inc.ID] = &stored
+	return nil
+}
+
+func (f *fakeIncidents) GetByID(_ context.Context, id uuid.UUID) (*incident.Incident, error) {
+	inc, ok := f.byID[id]
+	if !ok {
+		return nil, errs.ErrIncidentNotFound
+	}
+	clone := *inc
+	return &clone, nil
+}
+
+func (f *fakeIncidents) GetActiveByChatID(_ context.Context, chatID int64) (*incident.Incident, error) {
+	for _, inc := range f.byID {
+		if inc.ChatID == chatID && inc.Status == incident.StatusActive {
+			clone := *inc
+			return &clone, nil
+		}
+	}
+	return nil, errs.ErrNoActiveIncident
+}
+
+func (f *fakeIncidents) UpdateSeverity(_ context.Context, id uuid.UUID, severity incident.Severity) error {
+	inc, ok := f.byID[id]
+	if !ok {
+		return errs.ErrIncidentNotFound
+	}
+	inc.Severity = severity
+	return nil
+}
+
+func (f *fakeIncidents) Close(_ context.Context, id uuid.UUID, closedAt time.Time) error {
+	inc, ok := f.byID[id]
+	if !ok {
+		return errs.ErrIncidentNotFound
+	}
+	if inc.Status != incident.StatusActive {
+		return errs.ErrIncidentAlreadyClosed
+	}
+	inc.Status = incident.StatusClosed
+	inc.ClosedAt = &closedAt
+	return nil
+}
+
+// fakeEvents is an in-memory event.Repository.
+type fakeEvents struct {
+	byIncident map[uuid.UUID][]event.Event
+}
+
+func newFakeEvents() *fakeEvents {
+	return &fakeEvents{byIncident: make(map[uuid.UUID][]event.Event)}
+}
+
+func (f *fakeEvents) Create(_ context.Context, e *event.Event) error {
+	e.ID = uuid.New()
+	f.byIncident[e.IncidentID] = append(f.byIncident[e.IncidentID], *e)
+	return nil
+}
+
+func (f *fakeEvents) ListByIncidentID(_ context.Context, incidentID uuid.UUID) ([]event.Event, error) {
+	return f.byIncident[incidentID], nil
+}
+
+func (f *fakeEvents) ListParticipants(_ context.Context, incidentID uuid.UUID) ([]int64, error) {
+	seen := make(map[int64]struct{})
+	var ids []int64
+	for _, e := range f.byIncident[incidentID] {
+		if e.AuthorID == nil {
+			continue
+		}
+		if _, ok := seen[*e.AuthorID]; ok {
+			continue
+		}
+		seen[*e.AuthorID] = struct{}{}
+		ids = append(ids, *e.AuthorID)
+	}
+	return ids, nil
+}
+
+// fakeTx runs the unit of work directly against the shared fakes, so writes
+// inside the closure are visible afterwards. No real transaction semantics.
+type fakeTx struct {
+	incidents incident.Repository
+	events    event.Repository
+}
+
+func (f fakeTx) WithTx(_ context.Context, fn func(incident.Repository, event.Repository) error) error {
+	return fn(f.incidents, f.events)
+}
+
+// fakeReports is an in-memory report.Generator that records the last rendered
+// report and returns canned bytes.
+type fakeReports struct {
+	last report.Report
+	pdf  []byte
+	err  error
+}
+
+func (f *fakeReports) Generate(_ context.Context, r report.Report) ([]byte, error) {
+	f.last = r
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.pdf, nil
+}
+
+// newTestService wires the service to fresh shared fakes and returns all three
+// so tests can inspect the stored state.
+func newTestService() (*Service, *fakeIncidents, *fakeEvents) {
+	incidents := newFakeIncidents()
+	events := newFakeEvents()
+	svc := New(incidents, events, fakeTx{incidents: incidents, events: events}, &fakeReports{})
+	return svc, incidents, events
+}
+
+func ptrInt64(v int64) *int64 { return &v }
+
+// --- tests -----------------------------------------------------------------
+
+func TestCreateIncident(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("success writes incident and creation event", func(t *testing.T) {
+		svc, _, events := newTestService()
+
+		inc, err := svc.CreateIncident(ctx, 100, "DB is down", incident.SeverityHigh, ptrInt64(7), "alice")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if inc.ID == uuid.Nil {
+			t.Fatal("expected generated incident ID")
+		}
+		if inc.Status != incident.StatusActive {
+			t.Fatalf("expected ACTIVE status, got %q", inc.Status)
+		}
+
+		evs := events.byIncident[inc.ID]
+		if len(evs) != 1 || evs[0].Type != event.TypeIncidentCreated {
+			t.Fatalf("expected one INCIDENT_CREATED event, got %+v", evs)
+		}
+	})
+
+	t.Run("empty severity defaults to MEDIUM", func(t *testing.T) {
+		svc, _, _ := newTestService()
+
+		inc, err := svc.CreateIncident(ctx, 101, "Latency spike", "", nil, "bob")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if inc.Severity != incident.SeverityMedium {
+			t.Fatalf("expected MEDIUM severity, got %q", inc.Severity)
+		}
+	})
+
+	t.Run("duplicate active incident is a conflict", func(t *testing.T) {
+		svc, _, _ := newTestService()
+
+		if _, err := svc.CreateIncident(ctx, 102, "first", incident.SeverityLow, nil, "alice"); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		_, err := svc.CreateIncident(ctx, 102, "second", incident.SeverityLow, nil, "alice")
+		if errs.KindOf(err) != errs.KindConflict {
+			t.Fatalf("expected conflict, got %v", err)
+		}
+	})
+
+	t.Run("empty title is a validation error", func(t *testing.T) {
+		svc, _, _ := newTestService()
+
+		_, err := svc.CreateIncident(ctx, 103, "   ", incident.SeverityLow, nil, "alice")
+		if errs.KindOf(err) != errs.KindValidation {
+			t.Fatalf("expected validation error, got %v", err)
+		}
+	})
+}
+
+func TestAddTimelineEvent(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("appends a comment to the active incident", func(t *testing.T) {
+		svc, _, events := newTestService()
+		inc, _ := svc.CreateIncident(ctx, 200, "outage", incident.SeverityHigh, nil, "alice")
+
+		e, err := svc.AddTimelineEvent(ctx, 200, ptrInt64(9), "bob", "investigating")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if e.Type != event.TypeCommentAdded || e.IncidentID != inc.ID {
+			t.Fatalf("unexpected event: %+v", e)
+		}
+		if len(events.byIncident[inc.ID]) != 2 {
+			t.Fatalf("expected 2 events (created + comment), got %d", len(events.byIncident[inc.ID]))
+		}
+	})
+
+	t.Run("no active incident", func(t *testing.T) {
+		svc, _, _ := newTestService()
+
+		_, err := svc.AddTimelineEvent(ctx, 201, nil, "bob", "hello")
+		if errs.KindOf(err) != errs.KindNotFound {
+			t.Fatalf("expected not-found, got %v", err)
+		}
+	})
+
+	t.Run("empty message is a validation error", func(t *testing.T) {
+		svc, _, _ := newTestService()
+		_, _ = svc.CreateIncident(ctx, 202, "outage", incident.SeverityHigh, nil, "alice")
+
+		_, err := svc.AddTimelineEvent(ctx, 202, nil, "bob", "  ")
+		if errs.KindOf(err) != errs.KindValidation {
+			t.Fatalf("expected validation error, got %v", err)
+		}
+	})
+}
+
+func TestGetActiveIncident(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("returns the active incident", func(t *testing.T) {
+		svc, _, _ := newTestService()
+		created, _ := svc.CreateIncident(ctx, 300, "outage", incident.SeverityHigh, nil, "alice")
+
+		got, err := svc.GetActiveIncident(ctx, 300)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.ID != created.ID {
+			t.Fatalf("expected incident %s, got %s", created.ID, got.ID)
+		}
+	})
+
+	t.Run("no active incident", func(t *testing.T) {
+		svc, _, _ := newTestService()
+
+		_, err := svc.GetActiveIncident(ctx, 301)
+		if errs.KindOf(err) != errs.KindNotFound {
+			t.Fatalf("expected not-found, got %v", err)
+		}
+	})
+}
+
+func TestGetTimeline(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("returns incident and its events in order", func(t *testing.T) {
+		svc, _, _ := newTestService()
+		inc, _ := svc.CreateIncident(ctx, 400, "outage", incident.SeverityHigh, nil, "alice")
+		_, _ = svc.AddTimelineEvent(ctx, 400, ptrInt64(1), "bob", "looking into it")
+
+		got, events, err := svc.GetTimeline(ctx, 400)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.ID != inc.ID {
+			t.Fatalf("expected incident %s, got %s", inc.ID, got.ID)
+		}
+		if len(events) != 2 {
+			t.Fatalf("expected 2 events, got %d", len(events))
+		}
+		if events[0].Type != event.TypeIncidentCreated || events[1].Type != event.TypeCommentAdded {
+			t.Fatalf("unexpected event order: %+v", events)
+		}
+	})
+
+	t.Run("no active incident", func(t *testing.T) {
+		svc, _, _ := newTestService()
+
+		_, _, err := svc.GetTimeline(ctx, 401)
+		if errs.KindOf(err) != errs.KindNotFound {
+			t.Fatalf("expected not-found, got %v", err)
+		}
+	})
+}
+
+func TestCloseIncident(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("closes incident and writes close event", func(t *testing.T) {
+		svc, _, events := newTestService()
+		inc, _ := svc.CreateIncident(ctx, 500, "outage", incident.SeverityHigh, nil, "alice")
+
+		closed, err := svc.CloseIncident(ctx, 500, ptrInt64(3), "carol")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if closed.Status != incident.StatusClosed {
+			t.Fatalf("expected CLOSED status, got %q", closed.Status)
+		}
+		if closed.ClosedAt == nil {
+			t.Fatal("expected ClosedAt to be set")
+		}
+
+		evs := events.byIncident[inc.ID]
+		if len(evs) != 2 || evs[1].Type != event.TypeIncidentClosed {
+			t.Fatalf("expected creation + close events, got %+v", evs)
+		}
+	})
+
+	t.Run("no active incident", func(t *testing.T) {
+		svc, _, _ := newTestService()
+
+		_, err := svc.CloseIncident(ctx, 501, nil, "carol")
+		if errs.KindOf(err) != errs.KindNotFound {
+			t.Fatalf("expected not-found, got %v", err)
+		}
+	})
+
+	t.Run("closing twice is a conflict", func(t *testing.T) {
+		svc, _, _ := newTestService()
+		_, _ = svc.CreateIncident(ctx, 502, "outage", incident.SeverityHigh, nil, "alice")
+
+		if _, err := svc.CloseIncident(ctx, 502, nil, "carol"); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		// After closing, the chat has no active incident anymore.
+		_, err := svc.CloseIncident(ctx, 502, nil, "carol")
+		if errs.KindOf(err) != errs.KindNotFound {
+			t.Fatalf("expected not-found, got %v", err)
+		}
+	})
+}

@@ -5,11 +5,25 @@ services:
     env_file: .env
     environment:
       - POSTGRES_HOST=postgres
+      - REPORT_SERVICE_URL=http://report-service:8000
     ports:
       - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
+      report-service:
+        condition: service_healthy
+
+  report-service:
+    build: ./report-service
+    restart: unless-stopped
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   postgres:
     image: postgres:17-alpine
