@@ -1,0 +1,160 @@
+openapi: 3.0.3
+
+info:
+  title: Incident War Room Report Service API
+  description: API for generating PDF incident reports.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8001
+    description: Local Report Service
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Checks whether the Report Service is running.
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Service is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /api/v1/reports/generate:
+    post:
+      summary: Generate incident PDF report
+      description: Generates a PDF report based on incident metadata, participants and timeline events.
+      operationId: generateIncidentReport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportRequest"
+            example:
+              incident:
+                id: "15"
+                title: "Payment Service Down"
+                createdAt: "2026-06-01T14:03:00Z"
+                closedAt: "2026-06-01T14:18:00Z"
+                severity: "HIGH"
+                status: "CLOSED"
+              participants:
+                - userId: 1
+                  username: "rolan"
+                - userId: 2
+                  username: "bogdan"
+              timeline:
+                - timestamp: "2026-06-01T14:05:00Z"
+                  username: "rolan"
+                  message: "Started investigating database issues"
+                - timestamp: "2026-06-01T14:09:00Z"
+                  username: "bogdan"
+                  message: "Found connection pool errors"
+      responses:
+        "200":
+          description: PDF report generated successfully
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "422":
+          description: Invalid request payload
+
+components:
+  schemas:
+    ReportRequest:
+      type: object
+      required:
+        - incident
+        - participants
+        - timeline
+      properties:
+        incident:
+          $ref: "#/components/schemas/IncidentInfo"
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/Participant"
+        timeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineEvent"
+
+    IncidentInfo:
+      type: object
+      required:
+        - id
+        - title
+        - createdAt
+      properties:
+        id:
+          type: string
+          description: Incident unique identifier
+          example: "15"
+        title:
+          type: string
+          description: Incident title
+          example: "Payment Service Down"
+        createdAt:
+          type: string
+          description: Incident creation time
+          example: "2026-06-01T14:03:00Z"
+        closedAt:
+          type: string
+          nullable: true
+          description: Incident closing time
+          example: "2026-06-01T14:18:00Z"
+        severity:
+          type: string
+          nullable: true
+          description: Incident severity
+          example: "HIGH"
+        status:
+          type: string
+          nullable: true
+          description: Incident status
+          example: "CLOSED"
+
+    Participant:
+      type: object
+      required:
+        - userId
+        - username
+      properties:
+        userId:
+          type: integer
+          description: Telegram user ID
+          example: 1
+        username:
+          type: string
+          description: Telegram username
+          example: "rolan"
+
+    TimelineEvent:
+      type: object
+      required:
+        - timestamp
+        - username
+        - message
+      properties:
+        timestamp:
+          type: string
+          description: Event time
+          example: "2026-06-01T14:05:00Z"
+        username:
+          type: string
+          description: User who created the event
+          example: "rolan"
+        message:
+          type: string
+          description: Timeline event message
+          example: "Started investigating database issues"
