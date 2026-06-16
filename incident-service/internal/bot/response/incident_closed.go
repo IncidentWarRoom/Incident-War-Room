@@ -17,7 +17,7 @@ func IncidentClosed(inc incident.Incident) string {
 
 	if inc.ClosedAt != nil {
 		fmt.Fprintf(&b, "<b>Closed:</b> %s\n", formatTime(*inc.ClosedAt))
-		fmt.Fprintf(&b, "<b>Duration:</b> %s", formatDuration(inc.ClosedAt.Sub(inc.CreatedAt)))
+		fmt.Fprintf(&b, "<b>Duration:</b> %s", escape(formatDuration(inc.ClosedAt.Sub(inc.CreatedAt))))
 	} else {
 		b.WriteString("<b>Closed:</b> just now")
 	}
