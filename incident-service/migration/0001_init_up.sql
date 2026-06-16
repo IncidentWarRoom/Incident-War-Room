@@ -47,7 +47,7 @@ CREATE TABLE incident_events (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     incident_id UUID NOT NULL REFERENCES incidents (id) ON DELETE CASCADE,
     type        event_type NOT NULL,
-    author_id   BIGINT,
+    user_id     BIGINT,
     username    TEXT NOT NULL DEFAULT '',
     message     TEXT NOT NULL DEFAULT '',
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()

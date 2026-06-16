@@ -19,7 +19,7 @@ import (
 
 func sampleReport() report.Report {
 	closedAt := time.Date(2026, 6, 1, 14, 18, 0, 0, time.UTC)
-	author := int64(1)
+	user := int64(1)
 	return report.Report{
 		Incident: incident.Incident{
 			ID:        uuid.MustParse("11111111-1111-1111-1111-111111111111"),
@@ -31,7 +31,7 @@ func sampleReport() report.Report {
 		},
 		Participants: []report.Participant{{UserID: 1, Username: "rolan"}},
 		Timeline: []event.Event{{
-			AuthorID:  &author,
+			UserID:    &user,
 			Username:  "rolan",
 			Message:   "Started investigating database issues",
 			CreatedAt: time.Date(2026, 6, 1, 14, 5, 0, 0, time.UTC),

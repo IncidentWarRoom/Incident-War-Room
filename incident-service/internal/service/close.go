@@ -15,7 +15,7 @@ import (
 func (s *Service) CloseIncident(
 	ctx context.Context,
 	chatID int64,
-	authorID *int64,
+	userID *int64,
 	username string,
 ) (*incident.Incident, error) {
 	closedAt := s.now()
@@ -34,7 +34,7 @@ func (s *Service) CloseIncident(
 		if err := events.Create(ctx, &event.Event{
 			IncidentID: inc.ID,
 			Type:       event.TypeIncidentClosed,
-			AuthorID:   authorID,
+			UserID:     userID,
 			Username:   username,
 		}); err != nil {
 			return err
