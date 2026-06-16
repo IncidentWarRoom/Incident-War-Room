@@ -30,7 +30,6 @@ func (h *Handler) HandleIncident(c telebot.Context) error {
 	}
 }
 
-// createIncident opens a new incident and replies with the interactive card.
 func (h *Handler) createIncident(c telebot.Context, description string) error {
 	if description == "" {
 		return c.Send("Please add a description:\n/incident create <what happened>")
@@ -49,7 +48,6 @@ func (h *Handler) createIncident(c telebot.Context, description string) error {
 	return c.Send(incidentCard(inc.Title, inc.Severity, inc.Status), incidentMenu())
 }
 
-// addUpdate appends a comment to the active incident's timeline.
 func (h *Handler) addUpdate(c telebot.Context, message string) error {
 	ctx, cancel := reqContext()
 	defer cancel()
@@ -63,13 +61,6 @@ func (h *Handler) addUpdate(c telebot.Context, message string) error {
 	return c.Send("📝 Update added to the timeline.")
 }
 
-// closeIncident closes the active incident, generates its report and sends both
-// the closing summary and (best effort) the PDF. Report rendering goes first so
-// it still sees an active incident; a report failure does not block the close.
-//
-// On a logical failure (e.g. no active incident) it replies with a friendly
-// message and returns (nil, nil); the returned incident is non-nil only when
-// the incident was actually closed.
 func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 	ctx, cancel := reqContext()
 	defer cancel()
@@ -102,8 +93,6 @@ func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 	})
 }
 
-// setSeverity changes the active incident's severity and returns the updated
-// incident for re-rendering.
 func (h *Handler) setSeverity(c telebot.Context, sev incident.Severity) (*incident.Incident, error) {
 	ctx, cancel := reqContext()
 	defer cancel()
