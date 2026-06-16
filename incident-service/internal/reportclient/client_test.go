@@ -109,7 +109,7 @@ func TestGenerateMapsStatusToErrorKind(t *testing.T) {
 func TestGenerateUnreachableServiceIsUnavailable(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	url := srv.URL
-	srv.Close() // nothing is listening now
+	srv.Close()
 
 	_, err := New(url).Generate(context.Background(), sampleReport())
 	if errs.KindOf(err) != errs.KindUnavailable {

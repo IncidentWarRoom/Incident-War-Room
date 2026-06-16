@@ -13,11 +13,6 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/errs"
 )
 
-// --- in-memory fakes -------------------------------------------------------
-
-// fakeIncidents is an in-memory incident.Repository that reproduces the
-// business rules the use cases rely on: one active incident per chat and the
-// active/closed transition.
 type fakeIncidents struct {
 	byID map[uuid.UUID]*incident.Incident
 }
@@ -79,7 +74,6 @@ func (f *fakeIncidents) Close(_ context.Context, id uuid.UUID, closedAt time.Tim
 	return nil
 }
 
-// fakeEvents is an in-memory event.Repository.
 type fakeEvents struct {
 	byIncident map[uuid.UUID][]event.Event
 }
@@ -114,8 +108,6 @@ func (f *fakeEvents) ListParticipants(_ context.Context, incidentID uuid.UUID) (
 	return ids, nil
 }
 
-// fakeTx runs the unit of work directly against the shared fakes, so writes
-// inside the closure are visible afterwards. No real transaction semantics.
 type fakeTx struct {
 	incidents incident.Repository
 	events    event.Repository
@@ -125,8 +117,6 @@ func (f fakeTx) WithTx(_ context.Context, fn func(incident.Repository, event.Rep
 	return fn(f.incidents, f.events)
 }
 
-// fakeReports is an in-memory report.Generator that records the last rendered
-// report and returns canned bytes.
 type fakeReports struct {
 	last report.Report
 	pdf  []byte
@@ -141,8 +131,6 @@ func (f *fakeReports) Generate(_ context.Context, r report.Report) ([]byte, erro
 	return f.pdf, nil
 }
 
-// newTestService wires the service to fresh shared fakes and returns all three
-// so tests can inspect the stored state.
 func newTestService() (*Service, *fakeIncidents, *fakeEvents) {
 	incidents := newFakeIncidents()
 	events := newFakeEvents()
@@ -151,8 +139,6 @@ func newTestService() (*Service, *fakeIncidents, *fakeEvents) {
 }
 
 func ptrInt64(v int64) *int64 { return &v }
-
-// --- tests -----------------------------------------------------------------
 
 func TestCreateIncident(t *testing.T) {
 	ctx := context.Background()
@@ -349,7 +335,7 @@ func TestCloseIncident(t *testing.T) {
 		if _, err := svc.CloseIncident(ctx, 502, nil, "carol"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		// After closing, the chat has no active incident anymore.
+
 		_, err := svc.CloseIncident(ctx, 502, nil, "carol")
 		if errs.KindOf(err) != errs.KindNotFound {
 			t.Fatalf("expected not-found, got %v", err)

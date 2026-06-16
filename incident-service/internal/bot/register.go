@@ -2,17 +2,16 @@ package bot
 
 import "gopkg.in/telebot.v3"
 
-func Register(b *telebot.Bot) {
-	b.Handle("/start", HandleStart)
-	b.Handle("/incident", HandleIncident)
-	b.Handle("/timeline", HandleTimeline)
+// Register binds all command and inline-panel handlers to b.
+func (h *Handler) Register(b *telebot.Bot) {
+	b.Handle("/start", h.HandleStart)
+	b.Handle("/incident", h.HandleIncident)
+	b.Handle("/timeline", h.HandleTimeline)
 
-	// Inline panel callbacks.
-	b.Handle(&btnTimeline, handleShowTimeline)
-	b.Handle(&btnClose, handleCloseIncident)
-	b.Handle(&btnSeverity, handleChangeSeverity)
-	b.Handle(&btnSevBack, handleSeverityBack)
+	b.Handle(&btnTimeline, h.handleShowTimeline)
+	b.Handle(&btnClose, h.handleCloseIncident)
+	b.Handle(&btnSeverity, h.handleChangeSeverity)
+	b.Handle(&btnSevBack, h.handleSeverityBack)
 
-	// All severity buttons share one unique, so one registration routes them all.
-	b.Handle(&btnSevLow, handleSetSeverity)
+	b.Handle(&btnSevLow, h.handleSetSeverity)
 }

@@ -1,57 +1,74 @@
 package bot
 
 import (
+	"log"
+
 	"gopkg.in/telebot.v3"
 
+	"github.com/cQu1x/Incident-War-Room/internal/bot/response"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 )
 
-// Callback handlers for the inline incident panel.
-//
-// Each handler first answers the callback (c.Respond) to stop Telegram's
-// loading spinner, then updates the message in place (c.Edit) so the chat
-// stays tidy. Until persistence lands, the incident state is recovered from
-// the card text (parseCard) so the description survives every action.
-
-func handleShowTimeline(c telebot.Context) error {
+func (h *Handler) handleShowTimeline(c telebot.Context) error {
 	if err := c.Respond(); err != nil {
 		return err
 	}
-	return c.Send("[stub] Incident timeline is empty. (not implemented yet)")
+
+	ctx, cancel := reqContext()
+	defer cancel()
+
+	inc, events, err := h.svc.GetTimeline(ctx, c.Chat().ID)
+	if err != nil {
+		log.Printf("bot: show timeline: %v", err)
+		return c.Send(userError(err))
+	}
+
+	return c.Send(response.Timeline(*inc, events), telebot.ModeHTML)
 }
 
-func handleCloseIncident(c telebot.Context) error {
-	if err := c.Respond(&telebot.CallbackResponse{Text: "Incident closed ✅"}); err != nil {
+func (h *Handler) handleCloseIncident(c telebot.Context) error {
+	if err := c.Respond(&telebot.CallbackResponse{Text: "Closing incident…"}); err != nil {
 		return err
 	}
-	description, sev := parseCard(c.Message().Text)
-	card := incidentCard(description, sev, incident.StatusClosed)
-	// Empty markup removes the buttons — a closed incident has no actions.
-	return c.Edit(card, &telebot.ReplyMarkup{})
+
+	inc, err := h.closeIncident(c)
+	if err != nil {
+		return err
+	}
+	if inc == nil {
+		return nil
+	}
+
+	return c.Edit(incidentCard(inc.Title, inc.Severity, incident.StatusClosed), &telebot.ReplyMarkup{})
 }
 
-func handleChangeSeverity(c telebot.Context) error {
+func (h *Handler) handleChangeSeverity(c telebot.Context) error {
 	if err := c.Respond(); err != nil {
 		return err
 	}
-	// Swap only the keyboard so the card text (and its description) stays put.
+
 	return c.Edit(severityMenu)
 }
 
-func handleSetSeverity(c telebot.Context) error {
+func (h *Handler) handleSetSeverity(c telebot.Context) error {
 	sev := incident.Severity(c.Data())
 	if err := c.Respond(&telebot.CallbackResponse{Text: "Severity set to " + string(sev)}); err != nil {
 		return err
 	}
-	description, _ := parseCard(c.Message().Text)
-	card := incidentCard(description, sev, incident.StatusActive)
-	return c.Edit(card, incidentMenu)
+
+	inc, err := h.setSeverity(c, sev)
+	if err != nil {
+		log.Printf("bot: set severity: %v", err)
+		return c.Send(userError(err))
+	}
+
+	return c.Edit(incidentCard(inc.Title, inc.Severity, inc.Status), incidentMenu)
 }
 
-func handleSeverityBack(c telebot.Context) error {
+func (h *Handler) handleSeverityBack(c telebot.Context) error {
 	if err := c.Respond(); err != nil {
 		return err
 	}
-	// Restore the action panel; card text is untouched.
+
 	return c.Edit(incidentMenu)
 }

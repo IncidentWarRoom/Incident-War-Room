@@ -6,10 +6,6 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/report"
 )
 
-// The wire DTOs below mirror the ReportRequest schema of report-service.
-// time.Time marshals to RFC3339 ("2026-06-01T14:03:00Z"); closedAt is omitted
-// when the incident is still open.
-
 type request struct {
 	Incident     incidentDTO      `json:"incident"`
 	Participants []participantDTO `json:"participants"`

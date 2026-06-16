@@ -122,7 +122,7 @@ func (r *IncidentRepository) Close(ctx context.Context, id uuid.UUID, closedAt t
 	}
 	if tag.RowsAffected() == 0 {
 		if _, err := r.GetByID(ctx, id); err != nil {
-			return err // errs.ErrIncidentNotFound or a query failure
+			return err
 		}
 		return errs.ErrIncidentAlreadyClosed
 	}
