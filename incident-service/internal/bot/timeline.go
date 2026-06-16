@@ -1,12 +1,22 @@
 package bot
 
 import (
-	"github.com/cQu1x/Incident-War-Room/internal/bot/response"
-	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
+	"log"
+
 	"gopkg.in/telebot.v3"
+
+	"github.com/cQu1x/Incident-War-Room/internal/bot/response"
 )
 
-func HandleTimeline(c telebot.Context) error {
-	inc := incident.Incident{Title: "Untitled incident"}
-	return c.Send(response.Timeline(inc, nil), telebot.ModeHTML)
+func (h *Handler) HandleTimeline(c telebot.Context) error {
+	ctx, cancel := reqContext()
+	defer cancel()
+
+	inc, events, err := h.svc.GetTimeline(ctx, c.Chat().ID)
+	if err != nil {
+		log.Printf("bot: get timeline: %v", err)
+		return c.Send(userError(err))
+	}
+
+	return c.Send(response.Timeline(*inc, events), telebot.ModeHTML)
 }

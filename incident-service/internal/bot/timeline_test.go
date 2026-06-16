@@ -1,17 +1,37 @@
 package bot
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/cQu1x/Incident-War-Room/internal/domain/event"
+	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
+	"github.com/cQu1x/Incident-War-Room/internal/errs"
 )
 
-func TestHandleTimeline(t *testing.T) {
+func TestHandleTimelineEmpty(t *testing.T) {
+	h := New(&fakeService{
+		timeline: func(int64) (*incident.Incident, []event.Event, error) {
+			return &incident.Incident{Title: "outage"}, nil, nil
+		},
+	})
 	ctx := &mockContext{}
 
-	if err := HandleTimeline(ctx); err != nil {
+	if err := h.HandleTimeline(ctx); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got := lastSent(t, ctx); !strings.Contains(got, "timeline is empty") {
-		t.Errorf("unexpected reply: %q", got)
+	sentContains(t, ctx, "timeline is empty")
+}
+
+func TestHandleTimelineNoActiveIncident(t *testing.T) {
+	h := New(&fakeService{
+		timeline: func(int64) (*incident.Incident, []event.Event, error) {
+			return nil, nil, errs.ErrNoActiveIncident
+		},
+	})
+	ctx := &mockContext{}
+
+	if err := h.HandleTimeline(ctx); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
+	sentContains(t, ctx, "no active incident")
 }
