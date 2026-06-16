@@ -23,12 +23,12 @@ func NewEventRepository(db Querier) *EventRepository {
 // by the database and written back into e.
 func (r *EventRepository) Create(ctx context.Context, e *event.Event) error {
 	const query = `
-		INSERT INTO incident_events (incident_id, type, author_id, username, message)
+		INSERT INTO incident_events (incident_id, type, user_id, username, message)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at`
 
 	err := r.db.
-		QueryRow(ctx, query, e.IncidentID, e.Type, e.AuthorID, e.Username, e.Message).
+		QueryRow(ctx, query, e.IncidentID, e.Type, e.UserID, e.Username, e.Message).
 		Scan(&e.ID, &e.CreatedAt)
 	if err != nil {
 		return errs.Wrapf(errs.KindInternal, "repository.Event.Create", err, "insert event")
@@ -41,7 +41,7 @@ func (r *EventRepository) Create(ctx context.Context, e *event.Event) error {
 // order — this is the incident timeline.
 func (r *EventRepository) ListByIncidentID(ctx context.Context, incidentID uuid.UUID) ([]event.Event, error) {
 	const query = `
-		SELECT id, incident_id, type, author_id, username, message, created_at
+		SELECT id, incident_id, type, user_id, username, message, created_at
 		FROM incident_events
 		WHERE incident_id = $1
 		ORDER BY created_at ASC`
@@ -60,13 +60,13 @@ func (r *EventRepository) ListByIncidentID(ctx context.Context, incidentID uuid.
 }
 
 // ListParticipants returns distinct Telegram user IDs of everyone who
-// produced at least one event in the incident. Events without an author
+// produced at least one event in the incident. Events without a user
 // (system events) are skipped.
 func (r *EventRepository) ListParticipants(ctx context.Context, incidentID uuid.UUID) ([]int64, error) {
 	const query = `
-		SELECT DISTINCT author_id
+		SELECT DISTINCT user_id
 		FROM incident_events
-		WHERE incident_id = $1 AND author_id IS NOT NULL`
+		WHERE incident_id = $1 AND user_id IS NOT NULL`
 
 	rows, err := r.db.Query(ctx, query, incidentID)
 	if err != nil {
@@ -87,7 +87,7 @@ func scanEvent(row pgx.CollectableRow) (event.Event, error) {
 		&e.ID,
 		&e.IncidentID,
 		&e.Type,
-		&e.AuthorID,
+		&e.UserID,
 		&e.Username,
 		&e.Message,
 		&e.CreatedAt,

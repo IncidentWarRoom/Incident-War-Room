@@ -96,14 +96,14 @@ func (f *fakeEvents) ListParticipants(_ context.Context, incidentID uuid.UUID) (
 	seen := make(map[int64]struct{})
 	var ids []int64
 	for _, e := range f.byIncident[incidentID] {
-		if e.AuthorID == nil {
+		if e.UserID == nil {
 			continue
 		}
-		if _, ok := seen[*e.AuthorID]; ok {
+		if _, ok := seen[*e.UserID]; ok {
 			continue
 		}
-		seen[*e.AuthorID] = struct{}{}
-		ids = append(ids, *e.AuthorID)
+		seen[*e.UserID] = struct{}{}
+		ids = append(ids, *e.UserID)
 	}
 	return ids, nil
 }

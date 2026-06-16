@@ -60,24 +60,24 @@ func sentContains(t *testing.T, m *mockContext, substr string) {
 // fakeService is a configurable IncidentService for tests. Unset hooks return
 // zero values.
 type fakeService struct {
-	create   func(chatID int64, title string, sev incident.Severity, authorID *int64, username string) (*incident.Incident, error)
-	addEvent func(chatID int64, authorID *int64, username, message string) (*event.Event, error)
-	closeInc func(chatID int64, authorID *int64, username string) (*incident.Incident, error)
+	create   func(chatID int64, title string, sev incident.Severity, userID *int64, username string) (*incident.Incident, error)
+	addEvent func(chatID int64, userID *int64, username, message string) (*event.Event, error)
+	closeInc func(chatID int64, userID *int64, username string) (*incident.Incident, error)
 	setSev   func(chatID int64, sev incident.Severity) (*incident.Incident, error)
 	timeline func(chatID int64) (*incident.Incident, []event.Event, error)
 	report   func(chatID int64) ([]byte, error)
 }
 
-func (f *fakeService) CreateIncident(_ context.Context, chatID int64, title string, sev incident.Severity, authorID *int64, username string) (*incident.Incident, error) {
-	return f.create(chatID, title, sev, authorID, username)
+func (f *fakeService) CreateIncident(_ context.Context, chatID int64, title string, sev incident.Severity, userID *int64, username string) (*incident.Incident, error) {
+	return f.create(chatID, title, sev, userID, username)
 }
 
-func (f *fakeService) AddTimelineEvent(_ context.Context, chatID int64, authorID *int64, username, message string) (*event.Event, error) {
-	return f.addEvent(chatID, authorID, username, message)
+func (f *fakeService) AddTimelineEvent(_ context.Context, chatID int64, userID *int64, username, message string) (*event.Event, error) {
+	return f.addEvent(chatID, userID, username, message)
 }
 
-func (f *fakeService) CloseIncident(_ context.Context, chatID int64, authorID *int64, username string) (*incident.Incident, error) {
-	return f.closeInc(chatID, authorID, username)
+func (f *fakeService) CloseIncident(_ context.Context, chatID int64, userID *int64, username string) (*incident.Incident, error) {
+	return f.closeInc(chatID, userID, username)
 }
 
 func (f *fakeService) SetSeverity(_ context.Context, chatID int64, sev incident.Severity) (*incident.Incident, error) {

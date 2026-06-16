@@ -24,9 +24,9 @@ const handlerTimeout = 30 * time.Second
 // *service.Service; the bot depends only on this interface so it can be tested
 // with a fake.
 type IncidentService interface {
-	CreateIncident(ctx context.Context, chatID int64, title string, severity incident.Severity, authorID *int64, username string) (*incident.Incident, error)
-	AddTimelineEvent(ctx context.Context, chatID int64, authorID *int64, username, message string) (*event.Event, error)
-	CloseIncident(ctx context.Context, chatID int64, authorID *int64, username string) (*incident.Incident, error)
+	CreateIncident(ctx context.Context, chatID int64, title string, severity incident.Severity, userID *int64, username string) (*incident.Incident, error)
+	AddTimelineEvent(ctx context.Context, chatID int64, userID *int64, username, message string) (*event.Event, error)
+	CloseIncident(ctx context.Context, chatID int64, userID *int64, username string) (*incident.Incident, error)
 	SetSeverity(ctx context.Context, chatID int64, severity incident.Severity) (*incident.Incident, error)
 	GetTimeline(ctx context.Context, chatID int64) (*incident.Incident, []event.Event, error)
 	GenerateReport(ctx context.Context, chatID int64) ([]byte, error)
@@ -47,7 +47,7 @@ func reqContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), handlerTimeout)
 }
 
-// sender extracts the Telegram author of an update as (id, username). The id is
+// sender extracts the Telegram user of an update as (id, username). The id is
 // returned as a pointer so it can be stored as a nullable column; it is nil for
 // updates without a sender.
 func sender(c telebot.Context) (*int64, string) {

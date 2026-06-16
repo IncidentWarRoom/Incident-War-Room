@@ -39,8 +39,8 @@ func (h *Handler) createIncident(c telebot.Context, description string) error {
 	ctx, cancel := reqContext()
 	defer cancel()
 
-	authorID, username := sender(c)
-	inc, err := h.svc.CreateIncident(ctx, c.Chat().ID, description, "", authorID, username)
+	userID, username := sender(c)
+	inc, err := h.svc.CreateIncident(ctx, c.Chat().ID, description, "", userID, username)
 	if err != nil {
 		log.Printf("bot: create incident: %v", err)
 		return c.Send(userError(err))
@@ -54,8 +54,8 @@ func (h *Handler) addUpdate(c telebot.Context, message string) error {
 	ctx, cancel := reqContext()
 	defer cancel()
 
-	authorID, username := sender(c)
-	if _, err := h.svc.AddTimelineEvent(ctx, c.Chat().ID, authorID, username, message); err != nil {
+	userID, username := sender(c)
+	if _, err := h.svc.AddTimelineEvent(ctx, c.Chat().ID, userID, username, message); err != nil {
 		log.Printf("bot: add timeline event: %v", err)
 		return c.Send(userError(err))
 	}
@@ -75,11 +75,11 @@ func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 	defer cancel()
 
 	chatID := c.Chat().ID
-	authorID, username := sender(c)
+	userID, username := sender(c)
 
 	pdf, reportErr := h.svc.GenerateReport(ctx, chatID)
 
-	inc, err := h.svc.CloseIncident(ctx, chatID, authorID, username)
+	inc, err := h.svc.CloseIncident(ctx, chatID, userID, username)
 	if err != nil {
 		log.Printf("bot: close incident: %v", err)
 		return nil, c.Send(userError(err))
