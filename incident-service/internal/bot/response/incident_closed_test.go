@@ -9,6 +9,27 @@ import (
 	"github.com/google/uuid"
 )
 
+func TestIncidentClosedSubMinuteIsHTMLSafe(t *testing.T) {
+	created := time.Date(2026, 6, 13, 8, 0, 0, 0, time.UTC)
+	closed := created.Add(30 * time.Second)
+	inc := incident.Incident{
+		ID:        uuid.New(),
+		Title:     "DB is down",
+		Status:    incident.StatusClosed,
+		CreatedAt: created,
+		ClosedAt:  &closed,
+	}
+
+	got := IncidentClosed(inc)
+
+	if strings.Contains(got, "<1m") {
+		t.Errorf("IncidentClosed() leaks a raw '<' that breaks Telegram HTML parse mode: %q", got)
+	}
+	if !strings.Contains(got, "&lt;1m") {
+		t.Errorf("IncidentClosed() = %q, expected escaped duration &lt;1m", got)
+	}
+}
+
 func TestIncidentClosed(t *testing.T) {
 	created := time.Date(2026, 6, 13, 8, 0, 0, 0, time.UTC)
 	closed := time.Date(2026, 6, 13, 10, 15, 0, 0, time.UTC)
