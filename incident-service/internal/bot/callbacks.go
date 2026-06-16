@@ -47,7 +47,7 @@ func (h *Handler) handleChangeSeverity(c telebot.Context) error {
 		return err
 	}
 
-	return c.Edit(severityMenu)
+	return c.Edit(severityMenu())
 }
 
 func (h *Handler) handleSetSeverity(c telebot.Context) error {
@@ -62,7 +62,7 @@ func (h *Handler) handleSetSeverity(c telebot.Context) error {
 		return c.Send(userError(err))
 	}
 
-	return c.Edit(incidentCard(inc.Title, inc.Severity, inc.Status), incidentMenu)
+	return c.Edit(incidentCard(inc.Title, inc.Severity, inc.Status), incidentMenu())
 }
 
 func (h *Handler) handleSeverityBack(c telebot.Context) error {
@@ -70,5 +70,5 @@ func (h *Handler) handleSeverityBack(c telebot.Context) error {
 		return err
 	}
 
-	return c.Edit(incidentMenu)
+	return c.Edit(incidentMenu())
 }

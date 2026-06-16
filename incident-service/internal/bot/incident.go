@@ -46,7 +46,7 @@ func (h *Handler) createIncident(c telebot.Context, description string) error {
 		return c.Send(userError(err))
 	}
 
-	return c.Send(incidentCard(inc.Title, inc.Severity, inc.Status), incidentMenu)
+	return c.Send(incidentCard(inc.Title, inc.Severity, inc.Status), incidentMenu())
 }
 
 // addUpdate appends a comment to the active incident's timeline.
