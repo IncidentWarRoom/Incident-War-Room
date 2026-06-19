@@ -18,7 +18,7 @@ func TestIncidentCreated(t *testing.T) {
 		CreatedAt: time.Date(2026, 6, 13, 10, 30, 0, 0, time.UTC),
 	}
 
-	got := IncidentCreated(inc)
+	got := IncidentCreated(inc, "")
 
 	for _, want := range []string{
 		"<b>Incident created</b>",
@@ -34,6 +34,26 @@ func TestIncidentCreated(t *testing.T) {
 	}
 }
 
+func TestIncidentCreatedIncludesTopicLink(t *testing.T) {
+	inc := incident.Incident{ID: uuid.New(), Title: "outage", Status: incident.StatusActive}
+
+	got := IncidentCreated(inc, "https://t.me/c/123/45")
+
+	if !strings.Contains(got, `href="https://t.me/c/123/45"`) {
+		t.Errorf("IncidentCreated() = %q, expected a link to the topic", got)
+	}
+}
+
+func TestIncidentCreatedOmitsTopicLinkWhenEmpty(t *testing.T) {
+	inc := incident.Incident{ID: uuid.New(), Title: "outage", Status: incident.StatusActive}
+
+	got := IncidentCreated(inc, "")
+
+	if strings.Contains(got, "Open incident topic") {
+		t.Errorf("IncidentCreated() = %q, expected no topic link line", got)
+	}
+}
+
 func TestIncidentCreatedEscapesTitle(t *testing.T) {
 	inc := incident.Incident{
 		ID:       uuid.New(),
@@ -42,7 +62,7 @@ func TestIncidentCreatedEscapesTitle(t *testing.T) {
 		Status:   incident.StatusActive,
 	}
 
-	got := IncidentCreated(inc)
+	got := IncidentCreated(inc, "")
 
 	if strings.Contains(got, "<script>") {
 		t.Errorf("IncidentCreated() did not escape title: %q", got)

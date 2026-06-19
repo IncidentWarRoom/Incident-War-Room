@@ -71,14 +71,30 @@ func TestHandleIncidentCreateOpensTopicAndShowsCard(t *testing.T) {
 	if api.createdTopic.Name != "db is down" {
 		t.Errorf("topic name %q, want %q", api.createdTopic.Name, "db is down")
 	}
-	if len(api.sent) != 1 || api.sent[0].threadID != 777 {
+	if len(api.sent) != 2 {
+		t.Fatalf("expected the topic card and the main-chat announcement, got %v", api.sent)
+	}
+
+	card := api.sent[0]
+	if card.threadID != 777 {
 		t.Fatalf("expected card sent to topic 777, got %v", api.sent)
 	}
-	if !strings.Contains(api.sent[0].what, "db is down") {
-		t.Errorf("card %q does not contain the title", api.sent[0].what)
+	if !strings.Contains(card.what, "db is down") {
+		t.Errorf("card %q does not contain the title", card.what)
 	}
-	if m := api.sent[0].markup; m == nil || len(m.InlineKeyboard) == 0 {
+	if m := card.markup; m == nil || len(m.InlineKeyboard) == 0 {
 		t.Errorf("card sent without an inline menu: %+v", m)
+	}
+
+	announce := api.sent[1]
+	if announce.threadID != 0 {
+		t.Errorf("announcement sent to thread %d, want main chat (0)", announce.threadID)
+	}
+	if !strings.Contains(announce.what, "Incident created") {
+		t.Errorf("announcement %q is not the creation summary", announce.what)
+	}
+	if !strings.Contains(announce.what, "/777") {
+		t.Errorf("announcement %q does not link to the incident topic", announce.what)
 	}
 }
 

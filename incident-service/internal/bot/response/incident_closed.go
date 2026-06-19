@@ -8,7 +8,10 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 )
 
-func IncidentClosed(inc incident.Incident) string {
+// IncidentClosed renders the final summary posted in the main chat when an
+// incident is closed. timelineURLs are the Telegraph pages holding the full
+// timeline; when none are available yet a placeholder is shown in their place.
+func IncidentClosed(inc incident.Incident, timelineURLs []string) string {
 	var b strings.Builder
 
 	b.WriteString("✅ <b>Incident closed</b>\n\n")
@@ -20,6 +23,18 @@ func IncidentClosed(inc incident.Incident) string {
 		fmt.Fprintf(&b, "<b>Duration:</b> %s", escape(formatDuration(inc.ClosedAt.Sub(inc.CreatedAt))))
 	} else {
 		b.WriteString("<b>Closed:</b> just now")
+	}
+
+	b.WriteString("\n\n📋 <b>Timeline</b>\n")
+	if len(timelineURLs) == 0 {
+		b.WriteString("<i>Telegraph timeline pages will be linked here.</i>")
+	} else {
+		for i, url := range timelineURLs {
+			if i > 0 {
+				b.WriteByte('\n')
+			}
+			b.WriteString(escape(url))
+		}
 	}
 
 	return b.String()
