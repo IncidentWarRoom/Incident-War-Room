@@ -7,9 +7,6 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 )
 
-// IncidentCreated renders the announcement posted in the main chat when an
-// incident is opened. topicURL links to the dedicated incident topic; when
-// empty the link line is omitted.
 func IncidentCreated(inc incident.Incident, topicURL string) string {
 	var b strings.Builder
 

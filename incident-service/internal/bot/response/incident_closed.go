@@ -8,9 +8,6 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 )
 
-// IncidentClosed renders the final summary posted in the main chat when an
-// incident is closed. timelineURLs are the Telegraph pages holding the full
-// timeline; when none are available yet a placeholder is shown in their place.
 func IncidentClosed(inc incident.Incident, timelineURLs []string) string {
 	var b strings.Builder
 

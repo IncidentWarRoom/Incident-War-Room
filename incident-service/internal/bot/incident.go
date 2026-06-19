@@ -27,9 +27,6 @@ func topicName(title string) string {
 	return title
 }
 
-// topicLink builds a deep link to an incident topic. Public supergroups are
-// addressed by @username; private ones use the internal numeric id with the
-// "-100" supergroup prefix stripped.
 func topicLink(chat *telebot.Chat, threadID int) string {
 	if chat.Username != "" {
 		return fmt.Sprintf("https://t.me/%s/%d", chat.Username, threadID)
