@@ -13,8 +13,8 @@ import (
 //
 // Returns errs.ErrNoActiveIncident if the chat has no active incident, or an
 // errs.KindUnavailable error if the report service is unreachable.
-func (s *Service) GenerateReport(ctx context.Context, chatID int64) ([]byte, error) {
-	inc, events, err := s.GetTimeline(ctx, chatID)
+func (s *Service) GenerateReport(ctx context.Context, chatID, topicID int64) ([]byte, error) {
+	inc, events, err := s.GetTimeline(ctx, chatID, topicID)
 	if err != nil {
 		return nil, err
 	}

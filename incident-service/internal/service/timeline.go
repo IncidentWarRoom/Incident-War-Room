@@ -16,8 +16,8 @@ func (s *Service) GetActiveIncident(ctx context.Context, chatID int64) (*inciden
 // GetTimeline returns the chat's active incident together with its events in
 // chronological order. Returns errs.ErrNoActiveIncident if the chat has no
 // active incident.
-func (s *Service) GetTimeline(ctx context.Context, chatID int64) (*incident.Incident, []event.Event, error) {
-	active, err := s.incidents.GetActiveByChatID(ctx, chatID)
+func (s *Service) GetTimeline(ctx context.Context, chatID, topicID int64) (*incident.Incident, []event.Event, error) {
+	active, err := s.incidents.GetActiveByTopicID(ctx, chatID, topicID)
 	if err != nil {
 		return nil, nil, err
 	}

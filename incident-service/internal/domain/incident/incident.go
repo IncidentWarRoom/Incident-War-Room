@@ -12,6 +12,7 @@ type Incident struct {
 	Severity  Severity
 	Status    Status
 	ChatID    int64
+	TopicID   int64
 	CreatedBy *int64
 	CreatedAt time.Time
 	ClosedAt  *time.Time

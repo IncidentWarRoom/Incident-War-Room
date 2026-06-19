@@ -12,14 +12,14 @@ import (
 //
 // Returns errs.ErrNoActiveIncident if the chat has no active incident, or an
 // errs.KindValidation error if the severity is invalid.
-func (s *Service) SetSeverity(ctx context.Context, chatID int64, severity incident.Severity) (*incident.Incident, error) {
+func (s *Service) SetSeverity(ctx context.Context, chatID, topicID int64, severity incident.Severity) (*incident.Incident, error) {
 	const op = "service.SetSeverity"
 
 	if !validSeverity(severity) {
 		return nil, errs.New(errs.KindValidation, op, "invalid severity")
 	}
 
-	active, err := s.incidents.GetActiveByChatID(ctx, chatID)
+	active, err := s.incidents.GetActiveByTopicID(ctx, chatID, topicID)
 	if err != nil {
 		return nil, err
 	}
