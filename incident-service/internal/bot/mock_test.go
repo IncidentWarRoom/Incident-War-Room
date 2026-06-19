@@ -16,11 +16,12 @@ import (
 // messages a handler sends and lets a test set the chat and sender.
 type mockContext struct {
 	telebot.Context
-	args     []string
-	chatID   int64
-	threadID int64
-	user     *telebot.User
-	sent     []string
+	args       []string
+	chatID     int64
+	threadID   int64
+	user       *telebot.User
+	sent       []string
+	sentThread []int
 }
 
 func (m *mockContext) Args() []string { return m.args }
@@ -41,6 +42,14 @@ func (m *mockContext) Send(what interface{}, opts ...interface{}) error {
 	} else {
 		m.sent = append(m.sent, fmt.Sprintf("<%T>", what))
 	}
+
+	var thread int
+	for _, o := range opts {
+		if so, ok := o.(*telebot.SendOptions); ok {
+			thread = so.ThreadID
+		}
+	}
+	m.sentThread = append(m.sentThread, thread)
 	return nil
 }
 

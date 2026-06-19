@@ -18,5 +18,8 @@ func (h *Handler) HandleTimeline(c telebot.Context) error {
 		return c.Send(userError(err))
 	}
 
-	return c.Send(response.Timeline(*inc, events), telebot.ModeHTML)
+	return c.Send(response.Timeline(*inc, events), &telebot.SendOptions{
+		ThreadID:  int(threadID(c)),
+		ParseMode: telebot.ModeHTML,
+	})
 }
