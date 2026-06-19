@@ -107,6 +107,7 @@ type fakeAPI struct {
 type sentMessage struct {
 	threadID int
 	what     string
+	markup   *telebot.ReplyMarkup
 }
 
 func newFakeAPI() *fakeAPI {
@@ -114,14 +115,21 @@ func newFakeAPI() *fakeAPI {
 }
 
 func (a *fakeAPI) Send(_ telebot.Recipient, what interface{}, opts ...interface{}) (*telebot.Message, error) {
+	// Mirror telebot's option handling: a later *SendOptions replaces the whole
+	// options object, so a *ReplyMarkup passed before it would be discarded.
 	var thread int
+	var markup *telebot.ReplyMarkup
 	for _, o := range opts {
-		if so, ok := o.(*telebot.SendOptions); ok {
-			thread = so.ThreadID
+		switch v := o.(type) {
+		case *telebot.SendOptions:
+			thread = v.ThreadID
+			markup = v.ReplyMarkup
+		case *telebot.ReplyMarkup:
+			markup = v
 		}
 	}
 
-	msg := sentMessage{threadID: thread}
+	msg := sentMessage{threadID: thread, markup: markup}
 	if s, ok := what.(string); ok {
 		msg.what = s
 	} else {

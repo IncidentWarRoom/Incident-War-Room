@@ -71,8 +71,7 @@ func (h *Handler) createIncident(c telebot.Context, description string) error {
 	_, err = h.api.Send(
 		chat,
 		incidentCard(inc.Title, inc.Severity, inc.Status),
-		incidentMenu(),
-		&telebot.SendOptions{ThreadID: topic.ThreadID},
+		&telebot.SendOptions{ThreadID: topic.ThreadID, ReplyMarkup: incidentMenu()},
 	)
 	return err
 }

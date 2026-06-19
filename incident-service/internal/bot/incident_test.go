@@ -77,6 +77,9 @@ func TestHandleIncidentCreateOpensTopicAndShowsCard(t *testing.T) {
 	if !strings.Contains(api.sent[0].what, "db is down") {
 		t.Errorf("card %q does not contain the title", api.sent[0].what)
 	}
+	if m := api.sent[0].markup; m == nil || len(m.InlineKeyboard) == 0 {
+		t.Errorf("card sent without an inline menu: %+v", m)
+	}
 }
 
 func TestHandleIncidentCreateReportsForumRequiredOnTopicError(t *testing.T) {
