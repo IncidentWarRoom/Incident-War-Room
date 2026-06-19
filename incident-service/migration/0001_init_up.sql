@@ -21,7 +21,7 @@ CREATE TABLE incidents (
     severity    incident_severity NOT NULL DEFAULT 'MEDIUM',
     status      incident_status   NOT NULL DEFAULT 'ACTIVE',
     chat_id     BIGINT NOT NULL,
-    topic_id    BIGINT NOT NULL DEFAULT 0,      -- telegram forum topic (message_thread_id)
+    topic_id    BIGINT NOT NULL DEFAULT 0,
     created_by  BIGINT,                         -- tg_user_id
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     closed_at   TIMESTAMPTZ

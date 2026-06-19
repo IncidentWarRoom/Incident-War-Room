@@ -71,7 +71,6 @@ func TestHandleIncidentCreateOpensTopicAndShowsCard(t *testing.T) {
 	if api.createdTopic.Name != "db is down" {
 		t.Errorf("topic name %q, want %q", api.createdTopic.Name, "db is down")
 	}
-	// The card must be posted into the freshly created topic.
 	if len(api.sent) != 1 || api.sent[0].threadID != 777 {
 		t.Fatalf("expected card sent to topic 777, got %v", api.sent)
 	}
@@ -155,7 +154,6 @@ func TestHandleIncidentCloseSendsSummaryAndReportToGeneralAndDeletesTopic(t *tes
 	}
 	apiSentContains(t, api, "Incident closed")
 	apiSentContains(t, api, "telebot.Document")
-	// Summary and report go to General (thread 0), not the topic.
 	for _, s := range api.sent {
 		if s.threadID != 0 {
 			t.Errorf("close output sent to thread %d, want General (0)", s.threadID)

@@ -31,8 +31,6 @@ func (h *Handler) handleCloseIncident(c telebot.Context) error {
 		return err
 	}
 
-	// The summary and report are posted to General and the topic is deleted
-	// inside closeIncident, so there is nothing left to edit in place here.
 	_, err := h.closeIncident(c)
 	return err
 }

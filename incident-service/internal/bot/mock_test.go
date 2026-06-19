@@ -97,17 +97,13 @@ func (f *fakeService) GenerateReport(_ context.Context, chatID, topicID int64) (
 	return f.report(chatID, topicID)
 }
 
-// fakeAPI is a configurable TelegramAPI for tests. It records topic lifecycle
-// calls and the payloads sent, so tests can assert where messages land.
 type fakeAPI struct {
 	createdTopic *telebot.Topic
 	createErr    error
-	deleted      []int // ThreadIDs passed to DeleteTopic
+	deleted      []int
 	sent         []sentMessage
 }
 
-// sentMessage records one api.Send call: its thread (0 == General) and a
-// string/type rendering of the payload, mirroring mockContext.Send.
 type sentMessage struct {
 	threadID int
 	what     string
@@ -148,7 +144,6 @@ func (a *fakeAPI) DeleteTopic(_ *telebot.Chat, topic *telebot.Topic) error {
 	return nil
 }
 
-// apiSentContains fails the test unless some api.Send payload contains substr.
 func apiSentContains(t *testing.T, a *fakeAPI, substr string) {
 	t.Helper()
 	for _, s := range a.sent {

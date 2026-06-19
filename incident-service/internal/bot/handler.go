@@ -32,10 +32,6 @@ type IncidentService interface {
 	GenerateReport(ctx context.Context, chatID, topicID int64) ([]byte, error)
 }
 
-// TelegramAPI is the slice of telebot.Bot the handler needs to manage forum
-// topics and post messages to a specific chat/thread. *telebot.Bot satisfies
-// it; tests provide a fake. Using it keeps topic-aware handlers off the
-// concrete c.Bot().
 type TelegramAPI interface {
 	Send(to telebot.Recipient, what interface{}, opts ...interface{}) (*telebot.Message, error)
 	CreateTopic(chat *telebot.Chat, topic *telebot.Topic) (*telebot.Topic, error)
@@ -58,8 +54,6 @@ func reqContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), handlerTimeout)
 }
 
-// threadID returns the forum topic (message_thread_id) the update arrived in.
-// For messages outside any topic it is 0 (the chat's General thread).
 func threadID(c telebot.Context) int64 {
 	if m := c.Message(); m != nil {
 		return int64(m.ThreadID)

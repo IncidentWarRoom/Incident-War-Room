@@ -13,15 +13,10 @@ import (
 
 const incidentUsage = "Usage:\n/incident create <description> — open a new incident\n/incident close — close the active incident\n/incident <message> — add an update to the timeline"
 
-// topicNameLimit is Telegram's maximum forum topic name length (in characters).
 const topicNameLimit = 128
 
-// topicForumRequired is shown when a forum topic cannot be created, which almost
-// always means the chat is not a forum supergroup or the bot lacks the Manage
-// Topics admin right.
 const topicForumRequired = "Couldn't open a topic for this incident. Use /incident create in a forum supergroup where the bot is an admin with the \"Manage Topics\" right."
 
-// topicName trims the incident title to Telegram's topic-name limit.
 func topicName(title string) string {
 	r := []rune(title)
 	if len(r) > topicNameLimit {
@@ -95,9 +90,6 @@ func (h *Handler) addUpdate(c telebot.Context, message string) error {
 	return c.Send("📝 Update added to the timeline.")
 }
 
-// closeIncident closes the incident bound to the current topic. The closing
-// summary and the PDF report are posted to the chat's General thread (the topic
-// is about to be removed), then the topic is deleted.
 func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 	ctx, cancel := reqContext()
 	defer cancel()

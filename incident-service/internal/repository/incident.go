@@ -91,8 +91,6 @@ func (r *IncidentRepository) GetActiveByChatID(ctx context.Context, chatID int64
 	return inc, nil
 }
 
-// GetActiveByTopicID returns the active incident bound to the given forum topic,
-// or errs.ErrNoActiveIncident if the topic has no active incident.
 func (r *IncidentRepository) GetActiveByTopicID(ctx context.Context, chatID, topicID int64) (*incident.Incident, error) {
 	const op = "repository.Incident.GetActiveByTopicID"
 	const query = `
