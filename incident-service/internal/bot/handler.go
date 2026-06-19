@@ -24,27 +24,47 @@ const handlerTimeout = 30 * time.Second
 // *service.Service; the bot depends only on this interface so it can be tested
 // with a fake.
 type IncidentService interface {
-	CreateIncident(ctx context.Context, chatID int64, title string, severity incident.Severity, userID *int64, username string) (*incident.Incident, error)
-	AddTimelineEvent(ctx context.Context, chatID int64, userID *int64, username, message string) (*event.Event, error)
-	CloseIncident(ctx context.Context, chatID int64, userID *int64, username string) (*incident.Incident, error)
-	SetSeverity(ctx context.Context, chatID int64, severity incident.Severity) (*incident.Incident, error)
-	GetTimeline(ctx context.Context, chatID int64) (*incident.Incident, []event.Event, error)
-	GenerateReport(ctx context.Context, chatID int64) ([]byte, error)
+	CreateIncident(ctx context.Context, chatID, topicID int64, title string, severity incident.Severity, userID *int64, username string) (*incident.Incident, error)
+	AddTimelineEvent(ctx context.Context, chatID, topicID int64, userID *int64, username, message string) (*event.Event, error)
+	CloseIncident(ctx context.Context, chatID, topicID int64, userID *int64, username string) (*incident.Incident, error)
+	SetSeverity(ctx context.Context, chatID, topicID int64, severity incident.Severity) (*incident.Incident, error)
+	GetTimeline(ctx context.Context, chatID, topicID int64) (*incident.Incident, []event.Event, error)
+	GenerateReport(ctx context.Context, chatID, topicID int64) ([]byte, error)
+}
+
+// TelegramAPI is the slice of telebot.Bot the handler needs to manage forum
+// topics and post messages to a specific chat/thread. *telebot.Bot satisfies
+// it; tests provide a fake. Using it keeps topic-aware handlers off the
+// concrete c.Bot().
+type TelegramAPI interface {
+	Send(to telebot.Recipient, what interface{}, opts ...interface{}) (*telebot.Message, error)
+	CreateTopic(chat *telebot.Chat, topic *telebot.Topic) (*telebot.Topic, error)
+	DeleteTopic(chat *telebot.Chat, topic *telebot.Topic) error
 }
 
 // Handler wires Telegram updates to the incident use cases.
 type Handler struct {
 	svc IncidentService
+	api TelegramAPI
 }
 
-// New returns a Handler backed by svc.
-func New(svc IncidentService) *Handler {
-	return &Handler{svc: svc}
+// New returns a Handler backed by svc and the Telegram API.
+func New(svc IncidentService, api TelegramAPI) *Handler {
+	return &Handler{svc: svc, api: api}
 }
 
 // reqContext derives a bounded context for a single update.
 func reqContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), handlerTimeout)
+}
+
+// threadID returns the forum topic (message_thread_id) the update arrived in.
+// For messages outside any topic it is 0 (the chat's General thread).
+func threadID(c telebot.Context) int64 {
+	if m := c.Message(); m != nil {
+		return int64(m.ThreadID)
+	}
+	return 0
 }
 
 // sender extracts the Telegram user of an update as (id, username). The id is

@@ -33,12 +33,12 @@ func NewIncidentRepository(db Querier) *IncidentRepository {
 // into errs.ErrIncidentAlreadyActive.
 func (r *IncidentRepository) Create(ctx context.Context, inc *incident.Incident) error {
 	const query = `
-		INSERT INTO incidents (title, severity, status, chat_id, created_by)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO incidents (title, severity, status, chat_id, topic_id, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, created_at`
 
 	err := r.db.
-		QueryRow(ctx, query, inc.Title, inc.Severity, inc.Status, inc.ChatID, inc.CreatedBy).
+		QueryRow(ctx, query, inc.Title, inc.Severity, inc.Status, inc.ChatID, inc.TopicID, inc.CreatedBy).
 		Scan(&inc.ID, &inc.CreatedAt)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -56,7 +56,7 @@ func (r *IncidentRepository) Create(ctx context.Context, inc *incident.Incident)
 func (r *IncidentRepository) GetByID(ctx context.Context, id uuid.UUID) (*incident.Incident, error) {
 	const op = "repository.Incident.GetByID"
 	const query = `
-		SELECT id, title, severity, status, chat_id, created_by, created_at, closed_at
+		SELECT id, title, severity, status, chat_id, topic_id, created_by, created_at, closed_at
 		FROM incidents
 		WHERE id = $1`
 
@@ -76,11 +76,31 @@ func (r *IncidentRepository) GetByID(ctx context.Context, id uuid.UUID) (*incide
 func (r *IncidentRepository) GetActiveByChatID(ctx context.Context, chatID int64) (*incident.Incident, error) {
 	const op = "repository.Incident.GetActiveByChatID"
 	const query = `
-		SELECT id, title, severity, status, chat_id, created_by, created_at, closed_at
+		SELECT id, title, severity, status, chat_id, topic_id, created_by, created_at, closed_at
 		FROM incidents
 		WHERE chat_id = $1 AND status = $2`
 
 	inc, err := scanIncident(r.db.QueryRow(ctx, query, chatID, incident.StatusActive))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errs.ErrNoActiveIncident
+		}
+		return nil, errs.Wrapf(errs.KindInternal, op, err, "select incident")
+	}
+
+	return inc, nil
+}
+
+// GetActiveByTopicID returns the active incident bound to the given forum topic,
+// or errs.ErrNoActiveIncident if the topic has no active incident.
+func (r *IncidentRepository) GetActiveByTopicID(ctx context.Context, chatID, topicID int64) (*incident.Incident, error) {
+	const op = "repository.Incident.GetActiveByTopicID"
+	const query = `
+		SELECT id, title, severity, status, chat_id, topic_id, created_by, created_at, closed_at
+		FROM incidents
+		WHERE chat_id = $1 AND topic_id = $2 AND status = $3`
+
+	inc, err := scanIncident(r.db.QueryRow(ctx, query, chatID, topicID, incident.StatusActive))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errs.ErrNoActiveIncident
@@ -131,7 +151,7 @@ func (r *IncidentRepository) Close(ctx context.Context, id uuid.UUID, closedAt t
 }
 
 // scanIncident reads a single incident row in the standard column order:
-// id, title, severity, status, chat_id, created_by, created_at, closed_at.
+// id, title, severity, status, chat_id, topic_id, created_by, created_at, closed_at.
 // Callers map pgx.ErrNoRows to their own "not found" error.
 func scanIncident(row pgx.Row) (*incident.Incident, error) {
 	var inc incident.Incident
@@ -142,6 +162,7 @@ func scanIncident(row pgx.Row) (*incident.Incident, error) {
 		&inc.Severity,
 		&inc.Status,
 		&inc.ChatID,
+		&inc.TopicID,
 		&inc.CreatedBy,
 		&inc.CreatedAt,
 		&inc.ClosedAt,

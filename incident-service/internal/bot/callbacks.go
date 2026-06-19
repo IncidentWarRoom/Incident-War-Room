@@ -17,7 +17,7 @@ func (h *Handler) handleShowTimeline(c telebot.Context) error {
 	ctx, cancel := reqContext()
 	defer cancel()
 
-	inc, events, err := h.svc.GetTimeline(ctx, c.Chat().ID)
+	inc, events, err := h.svc.GetTimeline(ctx, c.Chat().ID, threadID(c))
 	if err != nil {
 		log.Printf("bot: show timeline: %v", err)
 		return c.Send(userError(err))
@@ -31,15 +31,10 @@ func (h *Handler) handleCloseIncident(c telebot.Context) error {
 		return err
 	}
 
-	inc, err := h.closeIncident(c)
-	if err != nil {
-		return err
-	}
-	if inc == nil {
-		return nil
-	}
-
-	return c.Edit(incidentCard(inc.Title, inc.Severity, incident.StatusClosed), &telebot.ReplyMarkup{})
+	// The summary and report are posted to General and the topic is deleted
+	// inside closeIncident, so there is nothing left to edit in place here.
+	_, err := h.closeIncident(c)
+	return err
 }
 
 func (h *Handler) handleChangeSeverity(c telebot.Context) error {

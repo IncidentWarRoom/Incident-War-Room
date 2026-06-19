@@ -12,7 +12,7 @@ func (h *Handler) HandleTimeline(c telebot.Context) error {
 	ctx, cancel := reqContext()
 	defer cancel()
 
-	inc, events, err := h.svc.GetTimeline(ctx, c.Chat().ID)
+	inc, events, err := h.svc.GetTimeline(ctx, c.Chat().ID, threadID(c))
 	if err != nil {
 		log.Printf("bot: get timeline: %v", err)
 		return c.Send(userError(err))

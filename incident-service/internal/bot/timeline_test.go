@@ -10,10 +10,10 @@ import (
 
 func TestHandleTimelineEmpty(t *testing.T) {
 	h := New(&fakeService{
-		timeline: func(int64) (*incident.Incident, []event.Event, error) {
+		timeline: func(int64, int64) (*incident.Incident, []event.Event, error) {
 			return &incident.Incident{Title: "outage"}, nil, nil
 		},
-	})
+	}, newFakeAPI())
 	ctx := &mockContext{}
 
 	if err := h.HandleTimeline(ctx); err != nil {
@@ -24,10 +24,10 @@ func TestHandleTimelineEmpty(t *testing.T) {
 
 func TestHandleTimelineNoActiveIncident(t *testing.T) {
 	h := New(&fakeService{
-		timeline: func(int64) (*incident.Incident, []event.Event, error) {
+		timeline: func(int64, int64) (*incident.Incident, []event.Event, error) {
 			return nil, nil, errs.ErrNoActiveIncident
 		},
-	})
+	}, newFakeAPI())
 	ctx := &mockContext{}
 
 	if err := h.HandleTimeline(ctx); err != nil {
