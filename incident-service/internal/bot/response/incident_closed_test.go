@@ -20,7 +20,7 @@ func TestIncidentClosedSubMinuteIsHTMLSafe(t *testing.T) {
 		ClosedAt:  &closed,
 	}
 
-	got := IncidentClosed(inc, nil)
+	got := IncidentClosed(inc, nil, "")
 
 	if strings.Contains(got, "<1m") {
 		t.Errorf("IncidentClosed() leaks a raw '<' that breaks Telegram HTML parse mode: %q", got)
@@ -41,7 +41,7 @@ func TestIncidentClosed(t *testing.T) {
 		ClosedAt:  &closed,
 	}
 
-	got := IncidentClosed(inc, nil)
+	got := IncidentClosed(inc, nil, "")
 
 	for _, want := range []string{
 		"<b>Incident closed</b>",
@@ -62,7 +62,7 @@ func TestIncidentClosedWithoutClosedAt(t *testing.T) {
 		Title: "DB is down",
 	}
 
-	got := IncidentClosed(inc, nil)
+	got := IncidentClosed(inc, nil, "")
 
 	if !strings.Contains(got, "just now") {
 		t.Errorf("IncidentClosed() = %q, expected 'just now' fallback", got)
@@ -75,16 +75,30 @@ func TestIncidentClosedWithoutClosedAt(t *testing.T) {
 func TestIncidentClosedTimelineBlock(t *testing.T) {
 	inc := incident.Incident{ID: uuid.New(), Title: "DB is down"}
 
-	placeholder := IncidentClosed(inc, nil)
+	placeholder := IncidentClosed(inc, nil, "")
 	if !strings.Contains(placeholder, "📋") || !strings.Contains(placeholder, "Timeline") {
 		t.Errorf("IncidentClosed() = %q, expected a Timeline block", placeholder)
 	}
 
-	withURLs := IncidentClosed(inc, []string{"https://telegra.ph/page-1", "https://telegra.ph/page-2"})
+	withURLs := IncidentClosed(inc, []string{"https://telegra.ph/page-1", "https://telegra.ph/page-2"}, "")
 	for _, want := range []string{"https://telegra.ph/page-1", "https://telegra.ph/page-2"} {
 		if !strings.Contains(withURLs, want) {
 			t.Errorf("IncidentClosed() = %q, missing timeline url %q", withURLs, want)
 		}
+	}
+}
+
+func TestIncidentClosedReportBlock(t *testing.T) {
+	inc := incident.Incident{ID: uuid.New(), Title: "DB is down"}
+
+	withReport := IncidentClosed(inc, nil, "https://reports.example/r/abc.pdf")
+	if !strings.Contains(withReport, "📄") || !strings.Contains(withReport, "https://reports.example/r/abc.pdf") {
+		t.Errorf("IncidentClosed() = %q, expected a report link", withReport)
+	}
+
+	unavailable := IncidentClosed(inc, nil, "")
+	if !strings.Contains(unavailable, "report could not be generated") {
+		t.Errorf("IncidentClosed() = %q, expected report-unavailable notice", unavailable)
 	}
 }
 

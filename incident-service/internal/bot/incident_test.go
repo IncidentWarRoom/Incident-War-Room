@@ -194,7 +194,7 @@ func TestHandleIncidentCloseSendsSummaryAndReportToGeneralAndDeletesTopic(t *tes
 	now := time.Now()
 	api := newFakeAPI()
 	h := New(&fakeService{
-		report: func(int64, int64) ([]byte, error) { return []byte("%PDF-1.4 fake"), nil },
+		report: func(int64, int64) (string, error) { return "https://reports.example/r/abc.pdf", nil },
 		closeInc: func(int64, int64, *int64, string) (*incident.Incident, error) {
 			return &incident.Incident{Title: "outage", CreatedAt: now, ClosedAt: &now}, nil
 		},
@@ -205,7 +205,7 @@ func TestHandleIncidentCloseSendsSummaryAndReportToGeneralAndDeletesTopic(t *tes
 		t.Fatalf("unexpected error: %v", err)
 	}
 	apiSentContains(t, api, "Incident closed")
-	apiSentContains(t, api, "telebot.Document")
+	apiSentContains(t, api, "https://reports.example/r/abc.pdf")
 	for _, s := range api.sent {
 		if s.threadID != 0 {
 			t.Errorf("close output sent to thread %d, want General (0)", s.threadID)
@@ -220,7 +220,7 @@ func TestHandleIncidentCloseStillClosesWhenReportFails(t *testing.T) {
 	now := time.Now()
 	api := newFakeAPI()
 	h := New(&fakeService{
-		report: func(int64, int64) ([]byte, error) { return nil, errs.New(errs.KindUnavailable, "report", "down") },
+		report: func(int64, int64) (string, error) { return "", errs.New(errs.KindUnavailable, "report", "down") },
 		closeInc: func(int64, int64, *int64, string) (*incident.Incident, error) {
 			return &incident.Incident{Title: "outage", CreatedAt: now, ClosedAt: &now}, nil
 		},
@@ -240,7 +240,7 @@ func TestHandleIncidentCloseStillClosesWhenReportFails(t *testing.T) {
 func TestHandleIncidentCloseReportsNoActive(t *testing.T) {
 	api := newFakeAPI()
 	h := New(&fakeService{
-		report:   func(int64, int64) ([]byte, error) { return nil, errs.ErrNoActiveIncident },
+		report:   func(int64, int64) (string, error) { return "", errs.ErrNoActiveIncident },
 		closeInc: func(int64, int64, *int64, string) (*incident.Incident, error) { return nil, errs.ErrNoActiveIncident },
 	}, api)
 	ctx := &mockContext{args: []string{"close"}, threadID: 5}

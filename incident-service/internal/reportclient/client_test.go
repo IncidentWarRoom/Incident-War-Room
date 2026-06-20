@@ -39,30 +39,29 @@ func sampleReport() report.Report {
 	}
 }
 
-func TestGenerateSendsContractAndReturnsPDF(t *testing.T) {
+func TestGenerateSendsContractAndReturnsURL(t *testing.T) {
+	const wantURL = "https://reports.example/r/11111111.pdf"
 	var gotPath, gotBody string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		b, _ := io.ReadAll(r.Body)
 		gotBody = string(b)
-		w.Header().Set("Content-Type", "application/pdf")
-		_, _ = w.Write([]byte("%PDF-1.4 fake"))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"reportUrl":"` + wantURL + `"}`))
 	}))
 	defer srv.Close()
 
-	pdf, err := New(srv.URL).Generate(context.Background(), sampleReport())
+	url, err := New(srv.URL).Generate(context.Background(), sampleReport())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if string(pdf) != "%PDF-1.4 fake" {
-		t.Fatalf("unexpected pdf bytes: %q", pdf)
+	if url != wantURL {
+		t.Fatalf("unexpected report url: %q", url)
 	}
 	if gotPath != generatePath {
 		t.Fatalf("expected path %q, got %q", generatePath, gotPath)
 	}
 
-	// The body must match the report-service wire contract (camelCase keys,
-	// RFC3339 timestamps).
 	var decoded map[string]any
 	if err := json.Unmarshal([]byte(gotBody), &decoded); err != nil {
 		t.Fatalf("body is not valid JSON: %v", err)

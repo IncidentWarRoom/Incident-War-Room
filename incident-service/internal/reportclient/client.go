@@ -56,41 +56,46 @@ func New(baseURL string, opts ...Option) *Client {
 	return c
 }
 
-// Generate maps r onto the report-service wire contract, posts it and returns
-// the rendered PDF bytes. A network failure or a 5xx response yields
-// errs.KindUnavailable; a 4xx response yields errs.KindValidation.
-func (c *Client) Generate(ctx context.Context, r report.Report) ([]byte, error) {
+func (c *Client) Generate(ctx context.Context, r report.Report) (string, error) {
 	const op = "reportclient.Generate"
 
 	body, err := json.Marshal(toRequest(r))
 	if err != nil {
-		return nil, errs.Wrapf(errs.KindInternal, op, err, "marshal request")
+		return "", errs.Wrapf(errs.KindInternal, op, err, "marshal request")
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+generatePath, bytes.NewReader(body))
 	if err != nil {
-		return nil, errs.Wrapf(errs.KindInternal, op, err, "build request")
+		return "", errs.Wrapf(errs.KindInternal, op, err, "build request")
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Accept", "application/pdf")
+	httpReq.Header.Set("Accept", "application/json")
 
 	resp, err := c.http.Do(httpReq)
 	if err != nil {
-		return nil, errs.Wrapf(errs.KindUnavailable, op, err, "call report service")
+		return "", errs.Wrapf(errs.KindUnavailable, op, err, "call report service")
 	}
 	defer resp.Body.Close()
 
-	pdf, err := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errs.Wrapf(errs.KindUnavailable, op, err, "read response body")
+		return "", errs.Wrapf(errs.KindUnavailable, op, err, "read response body")
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, errs.New(kindForStatus(resp.StatusCode), op,
-			"report service returned "+resp.Status+": "+snippet(pdf))
+		return "", errs.New(kindForStatus(resp.StatusCode), op,
+			"report service returned "+resp.Status+": "+snippet(data))
 	}
 
-	return pdf, nil
+	var res response
+	if err := json.Unmarshal(data, &res); err != nil {
+		return "", errs.Wrapf(errs.KindUnavailable, op, err, "decode response body")
+	}
+	if res.ReportURL == "" {
+		return "", errs.New(errs.KindUnavailable, op, "report service returned an empty report URL")
+	}
+
+	return res.ReportURL, nil
 }
 
 // kindForStatus maps an HTTP status code to an error Kind.
