@@ -19,9 +19,10 @@ import (
 func (s *Service) CreateIncident(
 	ctx context.Context,
 	chatID int64,
+	topicID int64,
 	title string,
 	severity incident.Severity,
-	authorID *int64,
+	userID *int64,
 	username string,
 ) (*incident.Incident, error) {
 	const op = "service.CreateIncident"
@@ -43,7 +44,8 @@ func (s *Service) CreateIncident(
 		Severity:  severity,
 		Status:    incident.StatusActive,
 		ChatID:    chatID,
-		CreatedBy: authorID,
+		TopicID:   topicID,
+		CreatedBy: userID,
 	}
 
 	err := s.tx.WithTx(ctx, func(incidents incident.Repository, events event.Repository) error {
@@ -53,7 +55,7 @@ func (s *Service) CreateIncident(
 		return events.Create(ctx, &event.Event{
 			IncidentID: inc.ID,
 			Type:       event.TypeIncidentCreated,
-			AuthorID:   authorID,
+			UserID:     userID,
 			Username:   username,
 			Message:    title,
 		})
@@ -72,7 +74,8 @@ func (s *Service) CreateIncident(
 func (s *Service) AddTimelineEvent(
 	ctx context.Context,
 	chatID int64,
-	authorID *int64,
+	topicID int64,
+	userID *int64,
 	username string,
 	message string,
 ) (*event.Event, error) {
@@ -83,7 +86,7 @@ func (s *Service) AddTimelineEvent(
 		return nil, errs.New(errs.KindValidation, op, "message is required")
 	}
 
-	active, err := s.incidents.GetActiveByChatID(ctx, chatID)
+	active, err := s.incidents.GetActiveByTopicID(ctx, chatID, topicID)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +94,7 @@ func (s *Service) AddTimelineEvent(
 	e := &event.Event{
 		IncidentID: active.ID,
 		Type:       event.TypeCommentAdded,
-		AuthorID:   authorID,
+		UserID:     userID,
 		Username:   username,
 		Message:    message,
 	}

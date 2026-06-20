@@ -9,12 +9,12 @@ import (
 
 // GenerateReport renders a PDF report for the chat's active incident. It loads
 // the incident together with its timeline, derives the participants from the
-// timeline authors and delegates rendering to the report.Generator port.
+// timeline users and delegates rendering to the report.Generator port.
 //
 // Returns errs.ErrNoActiveIncident if the chat has no active incident, or an
 // errs.KindUnavailable error if the report service is unreachable.
-func (s *Service) GenerateReport(ctx context.Context, chatID int64) ([]byte, error) {
-	inc, events, err := s.GetTimeline(ctx, chatID)
+func (s *Service) GenerateReport(ctx context.Context, chatID, topicID int64) ([]byte, error) {
+	inc, events, err := s.GetTimeline(ctx, chatID, topicID)
 	if err != nil {
 		return nil, err
 	}
@@ -26,21 +26,21 @@ func (s *Service) GenerateReport(ctx context.Context, chatID int64) ([]byte, err
 	})
 }
 
-// participantsFromEvents returns the distinct authors of the events, preserving
-// first-seen order. Events without an author (system events) are skipped.
+// participantsFromEvents returns the distinct users of the events, preserving
+// first-seen order. Events without a user (system events) are skipped.
 func participantsFromEvents(events []event.Event) []report.Participant {
 	seen := make(map[int64]struct{})
 	var participants []report.Participant
 	for _, e := range events {
-		if e.AuthorID == nil {
+		if e.UserID == nil {
 			continue
 		}
-		if _, ok := seen[*e.AuthorID]; ok {
+		if _, ok := seen[*e.UserID]; ok {
 			continue
 		}
-		seen[*e.AuthorID] = struct{}{}
+		seen[*e.UserID] = struct{}{}
 		participants = append(participants, report.Participant{
-			UserID:   *e.AuthorID,
+			UserID:   *e.UserID,
 			Username: e.Username,
 		})
 	}

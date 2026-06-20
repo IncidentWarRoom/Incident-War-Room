@@ -13,6 +13,18 @@ import (
 
 const incidentUsage = "Usage:\n/incident create <description> — open a new incident\n/incident close — close the active incident\n/incident <message> — add an update to the timeline"
 
+const topicNameLimit = 128
+
+const topicForumRequired = "Couldn't open a topic for this incident. Use /incident create in a forum supergroup where the bot is an admin with the \"Manage Topics\" right."
+
+func topicName(title string) string {
+	r := []rune(title)
+	if len(r) > topicNameLimit {
+		return string(r[:topicNameLimit])
+	}
+	return title
+}
+
 func (h *Handler) HandleIncident(c telebot.Context) error {
 	args := c.Args()
 	if len(args) == 0 {
@@ -30,7 +42,6 @@ func (h *Handler) HandleIncident(c telebot.Context) error {
 	}
 }
 
-// createIncident opens a new incident and replies with the interactive card.
 func (h *Handler) createIncident(c telebot.Context, description string) error {
 	if description == "" {
 		return c.Send("Please add a description:\n/incident create <what happened>")
@@ -39,23 +50,38 @@ func (h *Handler) createIncident(c telebot.Context, description string) error {
 	ctx, cancel := reqContext()
 	defer cancel()
 
-	authorID, username := sender(c)
-	inc, err := h.svc.CreateIncident(ctx, c.Chat().ID, description, "", authorID, username)
+	chat := c.Chat()
+
+	topic, err := h.api.CreateTopic(chat, &telebot.Topic{Name: topicName(description)})
+	if err != nil {
+		log.Printf("bot: create topic: %v", err)
+		return c.Send(topicForumRequired)
+	}
+
+	userID, username := sender(c)
+	inc, err := h.svc.CreateIncident(ctx, chat.ID, int64(topic.ThreadID), description, "", userID, username)
 	if err != nil {
 		log.Printf("bot: create incident: %v", err)
+		if delErr := h.api.DeleteTopic(chat, topic); delErr != nil {
+			log.Printf("bot: delete orphan topic %d: %v", topic.ThreadID, delErr)
+		}
 		return c.Send(userError(err))
 	}
 
-	return c.Send(incidentCard(inc.Title, inc.Severity, inc.Status), incidentMenu)
+	_, err = h.api.Send(
+		chat,
+		incidentCard(inc.Title, inc.Severity, inc.Status),
+		&telebot.SendOptions{ThreadID: topic.ThreadID, ReplyMarkup: incidentMenu()},
+	)
+	return err
 }
 
-// addUpdate appends a comment to the active incident's timeline.
 func (h *Handler) addUpdate(c telebot.Context, message string) error {
 	ctx, cancel := reqContext()
 	defer cancel()
 
-	authorID, username := sender(c)
-	if _, err := h.svc.AddTimelineEvent(ctx, c.Chat().ID, authorID, username, message); err != nil {
+	userID, username := sender(c)
+	if _, err := h.svc.AddTimelineEvent(ctx, c.Chat().ID, threadID(c), userID, username, message); err != nil {
 		log.Printf("bot: add timeline event: %v", err)
 		return c.Send(userError(err))
 	}
@@ -63,50 +89,52 @@ func (h *Handler) addUpdate(c telebot.Context, message string) error {
 	return c.Send("📝 Update added to the timeline.")
 }
 
-// closeIncident closes the active incident, generates its report and sends both
-// the closing summary and (best effort) the PDF. Report rendering goes first so
-// it still sees an active incident; a report failure does not block the close.
-//
-// On a logical failure (e.g. no active incident) it replies with a friendly
-// message and returns (nil, nil); the returned incident is non-nil only when
-// the incident was actually closed.
 func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 	ctx, cancel := reqContext()
 	defer cancel()
 
-	chatID := c.Chat().ID
-	authorID, username := sender(c)
+	chat := c.Chat()
+	topicID := threadID(c)
+	userID, username := sender(c)
 
-	pdf, reportErr := h.svc.GenerateReport(ctx, chatID)
+	pdf, reportErr := h.svc.GenerateReport(ctx, chat.ID, topicID)
 
-	inc, err := h.svc.CloseIncident(ctx, chatID, authorID, username)
+	inc, err := h.svc.CloseIncident(ctx, chat.ID, topicID, userID, username)
 	if err != nil {
 		log.Printf("bot: close incident: %v", err)
 		return nil, c.Send(userError(err))
 	}
 
-	if err := c.Send(response.IncidentClosed(*inc), telebot.ModeHTML); err != nil {
+	if _, err := h.api.Send(chat, response.IncidentClosed(*inc), telebot.ModeHTML); err != nil {
 		return inc, err
 	}
 
 	if reportErr != nil {
 		log.Printf("bot: generate report: %v", reportErr)
-		return inc, c.Send("⚠️ The incident was closed, but the report could not be generated right now.")
-	}
-
-	return inc, c.Send(&telebot.Document{
+		if _, err := h.api.Send(chat, "⚠️ The incident was closed, but the report could not be generated right now."); err != nil {
+			return inc, err
+		}
+	} else if _, err := h.api.Send(chat, &telebot.Document{
 		File:     telebot.FromReader(bytes.NewReader(pdf)),
 		FileName: "incident_report.pdf",
 		MIME:     "application/pdf",
 		Caption:  "📄 Incident report",
-	})
+	}); err != nil {
+		return inc, err
+	}
+
+	if topicID != 0 {
+		if err := h.api.DeleteTopic(chat, &telebot.Topic{ThreadID: int(topicID)}); err != nil {
+			log.Printf("bot: delete topic %d: %v", topicID, err)
+		}
+	}
+
+	return inc, nil
 }
 
-// setSeverity changes the active incident's severity and returns the updated
-// incident for re-rendering.
 func (h *Handler) setSeverity(c telebot.Context, sev incident.Severity) (*incident.Incident, error) {
 	ctx, cancel := reqContext()
 	defer cancel()
 
-	return h.svc.SetSeverity(ctx, c.Chat().ID, sev)
+	return h.svc.SetSeverity(ctx, c.Chat().ID, threadID(c), sev)
 }

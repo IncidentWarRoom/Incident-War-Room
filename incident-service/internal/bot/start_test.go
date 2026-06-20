@@ -3,7 +3,7 @@ package bot
 import "testing"
 
 func TestHandleStart(t *testing.T) {
-	h := New(&fakeService{})
+	h := New(&fakeService{}, newFakeAPI())
 	ctx := &mockContext{}
 
 	if err := h.HandleStart(ctx); err != nil {

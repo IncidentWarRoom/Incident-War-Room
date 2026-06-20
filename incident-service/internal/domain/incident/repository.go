@@ -19,6 +19,8 @@ type Repository interface {
 	// or errs.ErrNoActiveIncident if there is none.
 	GetActiveByChatID(ctx context.Context, chatID int64) (*Incident, error)
 
+	GetActiveByTopicID(ctx context.Context, chatID, topicID int64) (*Incident, error)
+
 	// UpdateSeverity returns errs.ErrIncidentNotFound if no incident exists with the given ID.
 	UpdateSeverity(ctx context.Context, id uuid.UUID, severity Severity) error
 

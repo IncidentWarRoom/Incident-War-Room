@@ -13,6 +13,6 @@ type Repository interface {
 	// ListByIncidentID returns all events of an incident in chronological order.
 	ListByIncidentID(ctx context.Context, incidentID uuid.UUID) ([]Event, error)
 
-	// ListParticipants returns distinct author IDs of an incident's events.
+	// ListParticipants returns distinct user IDs of an incident's events.
 	ListParticipants(ctx context.Context, incidentID uuid.UUID) ([]int64, error)
 }

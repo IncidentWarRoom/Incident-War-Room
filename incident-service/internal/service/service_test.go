@@ -23,7 +23,7 @@ func newFakeIncidents() *fakeIncidents {
 
 func (f *fakeIncidents) Create(_ context.Context, inc *incident.Incident) error {
 	for _, existing := range f.byID {
-		if existing.ChatID == inc.ChatID && existing.Status == incident.StatusActive {
+		if existing.ChatID == inc.ChatID && existing.TopicID == inc.TopicID && existing.Status == incident.StatusActive {
 			return errs.ErrIncidentAlreadyActive
 		}
 	}
@@ -45,6 +45,16 @@ func (f *fakeIncidents) GetByID(_ context.Context, id uuid.UUID) (*incident.Inci
 func (f *fakeIncidents) GetActiveByChatID(_ context.Context, chatID int64) (*incident.Incident, error) {
 	for _, inc := range f.byID {
 		if inc.ChatID == chatID && inc.Status == incident.StatusActive {
+			clone := *inc
+			return &clone, nil
+		}
+	}
+	return nil, errs.ErrNoActiveIncident
+}
+
+func (f *fakeIncidents) GetActiveByTopicID(_ context.Context, chatID, topicID int64) (*incident.Incident, error) {
+	for _, inc := range f.byID {
+		if inc.ChatID == chatID && inc.TopicID == topicID && inc.Status == incident.StatusActive {
 			clone := *inc
 			return &clone, nil
 		}
@@ -115,14 +125,14 @@ func (f *fakeEvents) ListParticipants(_ context.Context, incidentID uuid.UUID) (
 	seen := make(map[int64]struct{})
 	var ids []int64
 	for _, e := range f.byIncident[incidentID] {
-		if e.AuthorID == nil {
+		if e.UserID == nil {
 			continue
 		}
-		if _, ok := seen[*e.AuthorID]; ok {
+		if _, ok := seen[*e.UserID]; ok {
 			continue
 		}
-		seen[*e.AuthorID] = struct{}{}
-		ids = append(ids, *e.AuthorID)
+		seen[*e.UserID] = struct{}{}
+		ids = append(ids, *e.UserID)
 	}
 	return ids, nil
 }
@@ -165,7 +175,7 @@ func TestCreateIncident(t *testing.T) {
 	t.Run("success writes incident and creation event", func(t *testing.T) {
 		svc, _, events := newTestService()
 
-		inc, err := svc.CreateIncident(ctx, 100, "DB is down", incident.SeverityHigh, ptrInt64(7), "alice")
+		inc, err := svc.CreateIncident(ctx, 100, 100, "DB is down", incident.SeverityHigh, ptrInt64(7), "alice")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -185,7 +195,7 @@ func TestCreateIncident(t *testing.T) {
 	t.Run("empty severity defaults to MEDIUM", func(t *testing.T) {
 		svc, _, _ := newTestService()
 
-		inc, err := svc.CreateIncident(ctx, 101, "Latency spike", "", nil, "bob")
+		inc, err := svc.CreateIncident(ctx, 101, 101, "Latency spike", "", nil, "bob")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -197,10 +207,10 @@ func TestCreateIncident(t *testing.T) {
 	t.Run("duplicate active incident is a conflict", func(t *testing.T) {
 		svc, _, _ := newTestService()
 
-		if _, err := svc.CreateIncident(ctx, 102, "first", incident.SeverityLow, nil, "alice"); err != nil {
+		if _, err := svc.CreateIncident(ctx, 102, 102, "first", incident.SeverityLow, nil, "alice"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		_, err := svc.CreateIncident(ctx, 102, "second", incident.SeverityLow, nil, "alice")
+		_, err := svc.CreateIncident(ctx, 102, 102, "second", incident.SeverityLow, nil, "alice")
 		if errs.KindOf(err) != errs.KindConflict {
 			t.Fatalf("expected conflict, got %v", err)
 		}
@@ -209,7 +219,7 @@ func TestCreateIncident(t *testing.T) {
 	t.Run("empty title is a validation error", func(t *testing.T) {
 		svc, _, _ := newTestService()
 
-		_, err := svc.CreateIncident(ctx, 103, "   ", incident.SeverityLow, nil, "alice")
+		_, err := svc.CreateIncident(ctx, 103, 103, "   ", incident.SeverityLow, nil, "alice")
 		if errs.KindOf(err) != errs.KindValidation {
 			t.Fatalf("expected validation error, got %v", err)
 		}
@@ -221,9 +231,9 @@ func TestAddTimelineEvent(t *testing.T) {
 
 	t.Run("appends a comment to the active incident", func(t *testing.T) {
 		svc, _, events := newTestService()
-		inc, _ := svc.CreateIncident(ctx, 200, "outage", incident.SeverityHigh, nil, "alice")
+		inc, _ := svc.CreateIncident(ctx, 200, 200, "outage", incident.SeverityHigh, nil, "alice")
 
-		e, err := svc.AddTimelineEvent(ctx, 200, ptrInt64(9), "bob", "investigating")
+		e, err := svc.AddTimelineEvent(ctx, 200, 200, ptrInt64(9), "bob", "investigating")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -238,7 +248,7 @@ func TestAddTimelineEvent(t *testing.T) {
 	t.Run("no active incident", func(t *testing.T) {
 		svc, _, _ := newTestService()
 
-		_, err := svc.AddTimelineEvent(ctx, 201, nil, "bob", "hello")
+		_, err := svc.AddTimelineEvent(ctx, 201, 201, nil, "bob", "hello")
 		if errs.KindOf(err) != errs.KindNotFound {
 			t.Fatalf("expected not-found, got %v", err)
 		}
@@ -246,9 +256,9 @@ func TestAddTimelineEvent(t *testing.T) {
 
 	t.Run("empty message is a validation error", func(t *testing.T) {
 		svc, _, _ := newTestService()
-		_, _ = svc.CreateIncident(ctx, 202, "outage", incident.SeverityHigh, nil, "alice")
+		_, _ = svc.CreateIncident(ctx, 202, 202, "outage", incident.SeverityHigh, nil, "alice")
 
-		_, err := svc.AddTimelineEvent(ctx, 202, nil, "bob", "  ")
+		_, err := svc.AddTimelineEvent(ctx, 202, 202, nil, "bob", "  ")
 		if errs.KindOf(err) != errs.KindValidation {
 			t.Fatalf("expected validation error, got %v", err)
 		}
@@ -260,7 +270,7 @@ func TestGetActiveIncident(t *testing.T) {
 
 	t.Run("returns the active incident", func(t *testing.T) {
 		svc, _, _ := newTestService()
-		created, _ := svc.CreateIncident(ctx, 300, "outage", incident.SeverityHigh, nil, "alice")
+		created, _ := svc.CreateIncident(ctx, 300, 300, "outage", incident.SeverityHigh, nil, "alice")
 
 		got, err := svc.GetActiveIncident(ctx, 300)
 		if err != nil {
@@ -286,10 +296,10 @@ func TestGetTimeline(t *testing.T) {
 
 	t.Run("returns incident and its events in order", func(t *testing.T) {
 		svc, _, _ := newTestService()
-		inc, _ := svc.CreateIncident(ctx, 400, "outage", incident.SeverityHigh, nil, "alice")
-		_, _ = svc.AddTimelineEvent(ctx, 400, ptrInt64(1), "bob", "looking into it")
+		inc, _ := svc.CreateIncident(ctx, 400, 400, "outage", incident.SeverityHigh, nil, "alice")
+		_, _ = svc.AddTimelineEvent(ctx, 400, 400, ptrInt64(1), "bob", "looking into it")
 
-		got, events, err := svc.GetTimeline(ctx, 400)
+		got, events, err := svc.GetTimeline(ctx, 400, 400)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -307,7 +317,7 @@ func TestGetTimeline(t *testing.T) {
 	t.Run("no active incident", func(t *testing.T) {
 		svc, _, _ := newTestService()
 
-		_, _, err := svc.GetTimeline(ctx, 401)
+		_, _, err := svc.GetTimeline(ctx, 401, 401)
 		if errs.KindOf(err) != errs.KindNotFound {
 			t.Fatalf("expected not-found, got %v", err)
 		}
@@ -319,9 +329,9 @@ func TestCloseIncident(t *testing.T) {
 
 	t.Run("closes incident and writes close event", func(t *testing.T) {
 		svc, _, events := newTestService()
-		inc, _ := svc.CreateIncident(ctx, 500, "outage", incident.SeverityHigh, nil, "alice")
+		inc, _ := svc.CreateIncident(ctx, 500, 500, "outage", incident.SeverityHigh, nil, "alice")
 
-		closed, err := svc.CloseIncident(ctx, 500, ptrInt64(3), "carol")
+		closed, err := svc.CloseIncident(ctx, 500, 500, ptrInt64(3), "carol")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -341,7 +351,7 @@ func TestCloseIncident(t *testing.T) {
 	t.Run("no active incident", func(t *testing.T) {
 		svc, _, _ := newTestService()
 
-		_, err := svc.CloseIncident(ctx, 501, nil, "carol")
+		_, err := svc.CloseIncident(ctx, 501, 501, nil, "carol")
 		if errs.KindOf(err) != errs.KindNotFound {
 			t.Fatalf("expected not-found, got %v", err)
 		}
@@ -349,13 +359,13 @@ func TestCloseIncident(t *testing.T) {
 
 	t.Run("closing twice is a conflict", func(t *testing.T) {
 		svc, _, _ := newTestService()
-		_, _ = svc.CreateIncident(ctx, 502, "outage", incident.SeverityHigh, nil, "alice")
+		_, _ = svc.CreateIncident(ctx, 502, 502, "outage", incident.SeverityHigh, nil, "alice")
 
-		if _, err := svc.CloseIncident(ctx, 502, nil, "carol"); err != nil {
+		if _, err := svc.CloseIncident(ctx, 502, 502, nil, "carol"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		_, err := svc.CloseIncident(ctx, 502, nil, "carol")
+		_, err := svc.CloseIncident(ctx, 502, 502, nil, "carol")
 		if errs.KindOf(err) != errs.KindNotFound {
 			t.Fatalf("expected not-found, got %v", err)
 		}

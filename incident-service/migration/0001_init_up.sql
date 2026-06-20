@@ -21,13 +21,14 @@ CREATE TABLE incidents (
     severity    incident_severity NOT NULL DEFAULT 'MEDIUM',
     status      incident_status   NOT NULL DEFAULT 'ACTIVE',
     chat_id     BIGINT NOT NULL,
+    topic_id    BIGINT NOT NULL DEFAULT 0,
     created_by  BIGINT,                         -- tg_user_id
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     closed_at   TIMESTAMPTZ
 );
 
-CREATE UNIQUE INDEX idx_incidents_one_active_per_chat
-    ON incidents (chat_id)
+CREATE UNIQUE INDEX idx_incidents_one_active_per_topic
+    ON incidents (chat_id, topic_id)
     WHERE status = 'ACTIVE';
 
 CREATE INDEX idx_incidents_chat_id
@@ -47,7 +48,7 @@ CREATE TABLE incident_events (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     incident_id UUID NOT NULL REFERENCES incidents (id) ON DELETE CASCADE,
     type        event_type NOT NULL,
-    author_id   BIGINT,
+    user_id     BIGINT,
     username    TEXT NOT NULL DEFAULT '',
     message     TEXT NOT NULL DEFAULT '',
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()

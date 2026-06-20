@@ -15,14 +15,15 @@ import (
 func (s *Service) CloseIncident(
 	ctx context.Context,
 	chatID int64,
-	authorID *int64,
+	topicID int64,
+	userID *int64,
 	username string,
 ) (*incident.Incident, error) {
 	closedAt := s.now()
 
 	var active *incident.Incident
 	err := s.tx.WithTx(ctx, func(incidents incident.Repository, events event.Repository) error {
-		inc, err := incidents.GetActiveByChatID(ctx, chatID)
+		inc, err := incidents.GetActiveByTopicID(ctx, chatID, topicID)
 		if err != nil {
 			return err
 		}
@@ -34,7 +35,7 @@ func (s *Service) CloseIncident(
 		if err := events.Create(ctx, &event.Event{
 			IncidentID: inc.ID,
 			Type:       event.TypeIncidentClosed,
-			AuthorID:   authorID,
+			UserID:     userID,
 			Username:   username,
 		}); err != nil {
 			return err
