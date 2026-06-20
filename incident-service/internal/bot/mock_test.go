@@ -36,6 +36,8 @@ func (m *mockContext) Message() *telebot.Message {
 
 func (m *mockContext) Sender() *telebot.User { return m.user }
 
+func (m *mockContext) Respond(_ ...*telebot.CallbackResponse) error { return nil }
+
 func (m *mockContext) Send(what interface{}, opts ...interface{}) error {
 	if s, ok := what.(string); ok {
 		m.sent = append(m.sent, s)

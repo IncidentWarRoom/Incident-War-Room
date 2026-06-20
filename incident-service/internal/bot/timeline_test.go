@@ -57,6 +57,25 @@ func TestHandleTimelineLinksTelegraph(t *testing.T) {
 	sentContains(t, ctx, "https://telegra.ph/timeline-1")
 }
 
+func TestShowTimelineButtonLinksTelegraph(t *testing.T) {
+	h := New(&fakeService{
+		timeline: func(int64, int64) (*incident.Incident, []event.Event, error) {
+			return &incident.Incident{Title: "outage"}, []event.Event{
+				{Username: "alice", Message: "looking into it"},
+			}, nil
+		},
+		publish: func(int64, int64) ([]string, error) {
+			return []string{"https://telegra.ph/timeline-1"}, nil
+		},
+	}, newFakeAPI())
+	ctx := &mockContext{}
+
+	if err := h.handleShowTimeline(ctx); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	sentContains(t, ctx, "https://telegra.ph/timeline-1")
+}
+
 func TestHandleTimelineShowsTelegraphFailure(t *testing.T) {
 	h := New(&fakeService{
 		timeline: func(int64, int64) (*incident.Incident, []event.Event, error) {
