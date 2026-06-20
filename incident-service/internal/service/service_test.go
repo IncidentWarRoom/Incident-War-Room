@@ -71,6 +71,25 @@ func (f *fakeIncidents) UpdateSeverity(_ context.Context, id uuid.UUID, severity
 	return nil
 }
 
+func (f *fakeIncidents) UpdateTopicID(_ context.Context, id uuid.UUID, topicID int64) error {
+	inc, ok := f.byID[id]
+	if !ok {
+		return errs.ErrIncidentNotFound
+	}
+	inc.TopicID = &topicID
+	return nil
+}
+
+func (f *fakeIncidents) UpdateReport(_ context.Context, id uuid.UUID, telegraphURLs []string, reportURL string) error {
+	inc, ok := f.byID[id]
+	if !ok {
+		return errs.ErrIncidentNotFound
+	}
+	inc.TelegraphURLs = telegraphURLs
+	inc.ReportURL = &reportURL
+	return nil
+}
+
 func (f *fakeIncidents) Close(_ context.Context, id uuid.UUID, closedAt time.Time) error {
 	inc, ok := f.byID[id]
 	if !ok {
