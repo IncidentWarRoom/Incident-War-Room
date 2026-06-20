@@ -12,7 +12,7 @@ func TestSetSeverity(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("updates the active incident's severity", func(t *testing.T) {
-		svc, _, _ := newTestService()
+		svc, incidents, _ := newTestService()
 		if _, err := svc.CreateIncident(ctx, 200, 200, "DB is down", incident.SeverityLow, nil, "alice"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -25,7 +25,7 @@ func TestSetSeverity(t *testing.T) {
 			t.Fatalf("returned severity = %q, want HIGH", inc.Severity)
 		}
 
-		got, _ := svc.GetActiveIncident(ctx, 200)
+		got, _ := incidents.GetActiveByTopicID(ctx, 200, 200)
 		if got.Severity != incident.SeverityHigh {
 			t.Fatalf("stored severity = %q, want HIGH", got.Severity)
 		}

@@ -43,16 +43,6 @@ func (f *fakeIncidents) GetByID(_ context.Context, id uuid.UUID) (*incident.Inci
 	return &clone, nil
 }
 
-func (f *fakeIncidents) GetActiveByChatID(_ context.Context, chatID int64) (*incident.Incident, error) {
-	for _, inc := range f.byID {
-		if inc.ChatID == chatID && inc.Status == incident.StatusActive {
-			clone := *inc
-			return &clone, nil
-		}
-	}
-	return nil, errs.ErrNoActiveIncident
-}
-
 func (f *fakeIncidents) GetActiveByTopicID(_ context.Context, chatID, topicID int64) (*incident.Incident, error) {
 	for _, inc := range f.byID {
 		if inc.ChatID == chatID && inc.TopicID == topicID && inc.Status == incident.StatusActive {
@@ -72,22 +62,12 @@ func (f *fakeIncidents) UpdateSeverity(_ context.Context, id uuid.UUID, severity
 	return nil
 }
 
-func (f *fakeIncidents) UpdateTopicID(_ context.Context, id uuid.UUID, topicID int64) error {
-	inc, ok := f.byID[id]
-	if !ok {
-		return errs.ErrIncidentNotFound
-	}
-	inc.TopicID = topicID
-	return nil
-}
-
-func (f *fakeIncidents) UpdateReport(_ context.Context, id uuid.UUID, telegraphURLs []string, reportURL string) error {
+func (f *fakeIncidents) UpdateTelegraphURLs(_ context.Context, id uuid.UUID, telegraphURLs []string) error {
 	inc, ok := f.byID[id]
 	if !ok {
 		return errs.ErrIncidentNotFound
 	}
 	inc.TelegraphURLs = telegraphURLs
-	inc.ReportURL = &reportURL
 	return nil
 }
 
@@ -289,32 +269,6 @@ func TestAddTimelineEvent(t *testing.T) {
 	})
 }
 
-func TestGetActiveIncident(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("returns the active incident", func(t *testing.T) {
-		svc, _, _ := newTestService()
-		created, _ := svc.CreateIncident(ctx, 300, 300, "outage", incident.SeverityHigh, nil, "alice")
-
-		got, err := svc.GetActiveIncident(ctx, 300)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if got.ID != created.ID {
-			t.Fatalf("expected incident %s, got %s", created.ID, got.ID)
-		}
-	})
-
-	t.Run("no active incident", func(t *testing.T) {
-		svc, _, _ := newTestService()
-
-		_, err := svc.GetActiveIncident(ctx, 301)
-		if errs.KindOf(err) != errs.KindNotFound {
-			t.Fatalf("expected not-found, got %v", err)
-		}
-	})
-}
-
 func TestGetTimeline(t *testing.T) {
 	ctx := context.Background()
 
@@ -369,6 +323,11 @@ func TestPublishTimeline(t *testing.T) {
 		}
 		if publisher.last.Incident.ID != inc.ID || len(publisher.last.Events) != 2 {
 			t.Fatalf("publisher received %+v", publisher.last)
+		}
+
+		stored, _ := incidents.GetByID(ctx, inc.ID)
+		if len(stored.TelegraphURLs) != 1 || stored.TelegraphURLs[0] != "https://telegra.ph/timeline-1" {
+			t.Fatalf("expected telegraph urls persisted, got %v", stored.TelegraphURLs)
 		}
 	})
 

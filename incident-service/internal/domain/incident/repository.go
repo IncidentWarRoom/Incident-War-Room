@@ -15,17 +15,14 @@ type Repository interface {
 	// GetByID returns errs.ErrIncidentNotFound if no incident exists with the given ID.
 	GetByID(ctx context.Context, id uuid.UUID) (*Incident, error)
 
-	// GetActiveByChatID returns the chat's active incident,
+	// GetActiveByTopicID returns the topic's active incident,
 	// or errs.ErrNoActiveIncident if there is none.
-	GetActiveByChatID(ctx context.Context, chatID int64) (*Incident, error)
-
 	GetActiveByTopicID(ctx context.Context, chatID, topicID int64) (*Incident, error)
 
 	// UpdateSeverity returns errs.ErrIncidentNotFound if no incident exists with the given ID.
 	UpdateSeverity(ctx context.Context, id uuid.UUID, severity Severity) error
 
-	UpdateTopicID(ctx context.Context, id uuid.UUID, topicID int64) error
-	UpdateReport(ctx context.Context, id uuid.UUID, telegraphURLs []string, reportURL string) error
+	UpdateTelegraphURLs(ctx context.Context, id uuid.UUID, telegraphURLs []string) error
 	UpdateReportURL(ctx context.Context, id uuid.UUID, reportURL string) error
 
 	// Close marks an active incident as closed.
