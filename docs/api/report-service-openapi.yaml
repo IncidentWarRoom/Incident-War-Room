@@ -2,7 +2,7 @@ openapi: 3.0.3
 
 info:
   title: Incident War Room Report Service API
-  description: API for generating PDF incident reports.
+  description: API for generating PDF incident reports and storing them in object storage.
   version: 1.0.0
 
 servers:
@@ -30,7 +30,7 @@ paths:
   /api/v1/reports/generate:
     post:
       summary: Generate incident PDF report
-      description: Generates a PDF report based on incident metadata, participants and timeline events.
+      description: Generates a PDF report based on incident metadata, participants and timeline events, uploads it to object storage, and returns a public report URL.
       operationId: generateIncidentReport
       requestBody:
         required: true
@@ -60,12 +60,13 @@ paths:
                   message: "Found connection pool errors"
       responses:
         "200":
-          description: PDF report generated successfully
+          description: PDF report generated, uploaded to object storage, and public URL returned successfully
           content:
-            application/pdf:
+            application/json:
               schema:
-                type: string
-                format: binary
+                $ref: "#/components/schemas/ReportResponse"
+              example:
+                reportUrl: "https://storage.example.com/reports/15-20260601141800.pdf"
         "422":
           description: Invalid request payload
 
@@ -88,6 +89,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TimelineEvent"
+
+    ReportResponse:
+      type: object
+      required:
+        - reportUrl
+      properties:
+        reportUrl:
+          type: string
+          description: Public URL of the generated PDF report in object storage
+          example: "https://storage.example.com/reports/15-20260601141800.pdf"
 
     IncidentInfo:
       type: object
