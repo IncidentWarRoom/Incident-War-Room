@@ -14,4 +14,6 @@ func (h *Handler) Register(b *telebot.Bot) {
 	b.Handle(&btnSevBack, h.handleSeverityBack)
 
 	b.Handle(&btnSevLow, h.handleSetSeverity)
+
+	b.Handle(telebot.OnText, h.HandleTopicText)
 }

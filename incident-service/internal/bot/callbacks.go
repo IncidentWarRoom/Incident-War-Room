@@ -58,7 +58,12 @@ func (h *Handler) handleSetSeverity(c telebot.Context) error {
 		return c.Send(userError(err))
 	}
 
-	return c.Edit(incidentCard(inc.Title, inc.Severity, inc.Status), incidentMenu())
+	if err := c.Edit(incidentCard(inc.Title, inc.Severity, inc.Status), incidentMenu()); err != nil {
+		return err
+	}
+
+	h.refreshAnnouncement(c, *inc)
+	return nil
 }
 
 func (h *Handler) handleSeverityBack(c telebot.Context) error {

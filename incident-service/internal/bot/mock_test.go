@@ -12,14 +12,13 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 )
 
-// mockContext is a minimal telebot.Context for handler tests. It records the
-// messages a handler sends and lets a test set the chat and sender.
 type mockContext struct {
 	telebot.Context
 	args       []string
 	chatID     int64
 	threadID   int64
 	user       *telebot.User
+	message    *telebot.Message
 	sent       []string
 	sentThread []int
 }
@@ -29,13 +28,14 @@ func (m *mockContext) Args() []string { return m.args }
 func (m *mockContext) Chat() *telebot.Chat { return &telebot.Chat{ID: m.chatID} }
 
 func (m *mockContext) Message() *telebot.Message {
+	if m.message != nil {
+		return m.message
+	}
 	return &telebot.Message{ThreadID: int(m.threadID)}
 }
 
 func (m *mockContext) Sender() *telebot.User { return m.user }
 
-// Send records string payloads verbatim and other payloads (e.g. a PDF
-// document) by their type, so tests can assert on either.
 func (m *mockContext) Send(what interface{}, opts ...interface{}) error {
 	if s, ok := what.(string); ok {
 		m.sent = append(m.sent, s)
@@ -71,8 +71,6 @@ func sentContains(t *testing.T, m *mockContext, substr string) {
 	t.Fatalf("no sent message contains %q; sent: %v", substr, m.sent)
 }
 
-// fakeService is a configurable IncidentService for tests. Unset hooks return
-// zero values.
 type fakeService struct {
 	create   func(chatID, topicID int64, title string, sev incident.Severity, userID *int64, username string) (*incident.Incident, error)
 	addEvent func(chatID, topicID int64, userID *int64, username, message string) (*event.Event, error)
@@ -111,6 +109,7 @@ type fakeAPI struct {
 	createErr    error
 	deleted      []int
 	sent         []sentMessage
+	edited       []sentMessage
 }
 
 type sentMessage struct {
@@ -124,8 +123,6 @@ func newFakeAPI() *fakeAPI {
 }
 
 func (a *fakeAPI) Send(_ telebot.Recipient, what interface{}, opts ...interface{}) (*telebot.Message, error) {
-	// Mirror telebot's option handling: a later *SendOptions replaces the whole
-	// options object, so a *ReplyMarkup passed before it would be discarded.
 	var thread int
 	var markup *telebot.ReplyMarkup
 	for _, o := range opts {
@@ -145,6 +142,24 @@ func (a *fakeAPI) Send(_ telebot.Recipient, what interface{}, opts ...interface{
 		msg.what = fmt.Sprintf("<%T>", what)
 	}
 	a.sent = append(a.sent, msg)
+	return &telebot.Message{}, nil
+}
+
+func (a *fakeAPI) Edit(_ telebot.Editable, what interface{}, opts ...interface{}) (*telebot.Message, error) {
+	var markup *telebot.ReplyMarkup
+	for _, o := range opts {
+		if v, ok := o.(*telebot.ReplyMarkup); ok {
+			markup = v
+		}
+	}
+
+	msg := sentMessage{markup: markup}
+	if s, ok := what.(string); ok {
+		msg.what = s
+	} else {
+		msg.what = fmt.Sprintf("<%T>", what)
+	}
+	a.edited = append(a.edited, msg)
 	return &telebot.Message{}, nil
 }
 

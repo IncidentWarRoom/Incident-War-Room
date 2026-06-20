@@ -2,7 +2,9 @@ package bot
 
 import (
 	"bytes"
+	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	"gopkg.in/telebot.v3"
@@ -23,6 +25,14 @@ func topicName(title string) string {
 		return string(r[:topicNameLimit])
 	}
 	return title
+}
+
+func topicLink(chat *telebot.Chat, threadID int) string {
+	if chat.Username != "" {
+		return fmt.Sprintf("https://t.me/%s/%d", chat.Username, threadID)
+	}
+	id := strings.TrimPrefix(strconv.FormatInt(chat.ID, 10), "-100")
+	return fmt.Sprintf("https://t.me/c/%s/%d", id, threadID)
 }
 
 func (h *Handler) HandleIncident(c telebot.Context) error {
@@ -68,12 +78,43 @@ func (h *Handler) createIncident(c telebot.Context, description string) error {
 		return c.Send(userError(err))
 	}
 
-	_, err = h.api.Send(
+	if _, err := h.api.Send(
 		chat,
 		incidentCard(inc.Title, inc.Severity, inc.Status),
 		&telebot.SendOptions{ThreadID: topic.ThreadID, ReplyMarkup: incidentMenu()},
+	); err != nil {
+		return err
+	}
+
+	announcement, err := h.api.Send(
+		chat,
+		response.IncidentCreated(*inc, topicLink(chat, topic.ThreadID)),
+		telebot.ModeHTML,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	h.rememberAnnouncement(chat.ID, int64(topic.ThreadID), announcement)
+	return nil
+}
+
+func (h *Handler) refreshAnnouncement(c telebot.Context, inc incident.Incident) {
+	chat := c.Chat()
+	topicID := threadID(c)
+
+	msg, ok := h.announcement(chat.ID, topicID)
+	if !ok {
+		return
+	}
+
+	if _, err := h.api.Edit(
+		msg,
+		response.IncidentCreated(inc, topicLink(chat, int(topicID))),
+		telebot.ModeHTML,
+	); err != nil {
+		log.Printf("bot: refresh main-chat announcement: %v", err)
+	}
 }
 
 func (h *Handler) addUpdate(c telebot.Context, message string) error {
@@ -105,7 +146,7 @@ func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 		return nil, c.Send(userError(err))
 	}
 
-	if _, err := h.api.Send(chat, response.IncidentClosed(*inc), telebot.ModeHTML); err != nil {
+	if _, err := h.api.Send(chat, response.IncidentClosed(*inc, nil), telebot.ModeHTML); err != nil {
 		return inc, err
 	}
 
@@ -129,6 +170,7 @@ func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 		}
 	}
 
+	h.forgetAnnouncement(chat.ID, topicID)
 	return inc, nil
 }
 

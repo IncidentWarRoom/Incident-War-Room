@@ -11,7 +11,7 @@ import (
 func Timeline(inc incident.Incident, events []event.Event) string {
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "🕓 <b>Timeline</b> — %s\n", escape(inc.Title))
+	fmt.Fprintf(&b, "📋 <b>Timeline</b> — %s\n", escape(inc.Title))
 
 	if len(events) == 0 {
 		b.WriteString("\nThe incident timeline is empty.")

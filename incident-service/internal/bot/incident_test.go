@@ -71,14 +71,63 @@ func TestHandleIncidentCreateOpensTopicAndShowsCard(t *testing.T) {
 	if api.createdTopic.Name != "db is down" {
 		t.Errorf("topic name %q, want %q", api.createdTopic.Name, "db is down")
 	}
-	if len(api.sent) != 1 || api.sent[0].threadID != 777 {
+	if len(api.sent) != 2 {
+		t.Fatalf("expected the topic card and the main-chat announcement, got %v", api.sent)
+	}
+
+	card := api.sent[0]
+	if card.threadID != 777 {
 		t.Fatalf("expected card sent to topic 777, got %v", api.sent)
 	}
-	if !strings.Contains(api.sent[0].what, "db is down") {
-		t.Errorf("card %q does not contain the title", api.sent[0].what)
+	if !strings.Contains(card.what, "db is down") {
+		t.Errorf("card %q does not contain the title", card.what)
 	}
-	if m := api.sent[0].markup; m == nil || len(m.InlineKeyboard) == 0 {
+	if m := card.markup; m == nil || len(m.InlineKeyboard) == 0 {
 		t.Errorf("card sent without an inline menu: %+v", m)
+	}
+
+	announce := api.sent[1]
+	if announce.threadID != 0 {
+		t.Errorf("announcement sent to thread %d, want main chat (0)", announce.threadID)
+	}
+	if !strings.Contains(announce.what, "Incident created") {
+		t.Errorf("announcement %q is not the creation summary", announce.what)
+	}
+	if !strings.Contains(announce.what, "/777") {
+		t.Errorf("announcement %q does not link to the incident topic", announce.what)
+	}
+}
+
+func TestSeverityChangeRefreshesMainChatAnnouncement(t *testing.T) {
+	api := newFakeAPI()
+	api.createdTopic.ThreadID = 777
+	h := New(&fakeService{
+		create: func(_ int64, topicID int64, title string, _ incident.Severity, _ *int64, _ string) (*incident.Incident, error) {
+			return &incident.Incident{Title: title, TopicID: topicID, Severity: incident.SeverityMedium, Status: incident.StatusActive}, nil
+		},
+	}, api)
+
+	if err := h.HandleIncident(&mockContext{args: []string{"create", "db", "down"}}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	updated := incident.Incident{Title: "db down", TopicID: 777, Severity: incident.SeverityHigh, Status: incident.StatusActive}
+	h.refreshAnnouncement(&mockContext{threadID: 777}, updated)
+
+	if len(api.edited) != 1 {
+		t.Fatalf("expected the announcement to be edited once, got %v", api.edited)
+	}
+	if !strings.Contains(api.edited[0].what, "HIGH") {
+		t.Errorf("refreshed announcement %q does not show the new severity", api.edited[0].what)
+	}
+	if !strings.Contains(api.edited[0].what, "/777") {
+		t.Errorf("refreshed announcement %q lost the topic link", api.edited[0].what)
+	}
+
+	h.forgetAnnouncement(0, 777)
+	h.refreshAnnouncement(&mockContext{threadID: 777}, updated)
+	if len(api.edited) != 1 {
+		t.Errorf("expected no further edits after the announcement was forgotten, got %v", api.edited)
 	}
 }
 

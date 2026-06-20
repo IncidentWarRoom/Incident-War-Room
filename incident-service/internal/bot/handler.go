@@ -1,12 +1,9 @@
-// Package bot is the Telegram-facing layer of the incident war room. It
-// translates telebot updates into service use-case calls and renders the
-// results back into chat messages. It owns no business rules: every command
-// and inline-panel action delegates to the IncidentService.
 package bot
 
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"gopkg.in/telebot.v3"
@@ -16,13 +13,8 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/errs"
 )
 
-// handlerTimeout bounds every use-case call triggered by a Telegram update so a
-// slow database or report service cannot wedge a handler forever.
 const handlerTimeout = 30 * time.Second
 
-// IncidentService is the set of use cases the bot drives. It is implemented by
-// *service.Service; the bot depends only on this interface so it can be tested
-// with a fake.
 type IncidentService interface {
 	CreateIncident(ctx context.Context, chatID, topicID int64, title string, severity incident.Severity, userID *int64, username string) (*incident.Incident, error)
 	AddTimelineEvent(ctx context.Context, chatID, topicID int64, userID *int64, username, message string) (*event.Event, error)
@@ -34,22 +26,51 @@ type IncidentService interface {
 
 type TelegramAPI interface {
 	Send(to telebot.Recipient, what interface{}, opts ...interface{}) (*telebot.Message, error)
+	Edit(msg telebot.Editable, what interface{}, opts ...interface{}) (*telebot.Message, error)
 	CreateTopic(chat *telebot.Chat, topic *telebot.Topic) (*telebot.Topic, error)
 	DeleteTopic(chat *telebot.Chat, topic *telebot.Topic) error
 }
 
-// Handler wires Telegram updates to the incident use cases.
+type announceKey struct {
+	chatID  int64
+	topicID int64
+}
+
 type Handler struct {
 	svc IncidentService
 	api TelegramAPI
+
+	mu            sync.Mutex
+	announcements map[announceKey]telebot.Editable
 }
 
-// New returns a Handler backed by svc and the Telegram API.
 func New(svc IncidentService, api TelegramAPI) *Handler {
-	return &Handler{svc: svc, api: api}
+	return &Handler{
+		svc:           svc,
+		api:           api,
+		announcements: make(map[announceKey]telebot.Editable),
+	}
 }
 
-// reqContext derives a bounded context for a single update.
+func (h *Handler) rememberAnnouncement(chatID, topicID int64, msg telebot.Editable) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.announcements[announceKey{chatID, topicID}] = msg
+}
+
+func (h *Handler) announcement(chatID, topicID int64) (telebot.Editable, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	msg, ok := h.announcements[announceKey{chatID, topicID}]
+	return msg, ok
+}
+
+func (h *Handler) forgetAnnouncement(chatID, topicID int64) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.announcements, announceKey{chatID, topicID})
+}
+
 func reqContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), handlerTimeout)
 }
@@ -61,9 +82,6 @@ func threadID(c telebot.Context) int64 {
 	return 0
 }
 
-// sender extracts the Telegram user of an update as (id, username). The id is
-// returned as a pointer so it can be stored as a nullable column; it is nil for
-// updates without a sender.
 func sender(c telebot.Context) (*int64, string) {
 	u := c.Sender()
 	if u == nil {
@@ -73,9 +91,6 @@ func sender(c telebot.Context) (*int64, string) {
 	return &id, u.Username
 }
 
-// userError turns a service error into a chat-friendly message. The internal
-// op/cause detail is intentionally dropped — it is logged elsewhere, not shown
-// to users.
 func userError(err error) string {
 	switch {
 	case errors.Is(err, errs.ErrNoActiveIncident):
