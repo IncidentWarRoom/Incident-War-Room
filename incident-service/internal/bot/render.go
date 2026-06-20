@@ -6,7 +6,6 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 )
 
-// severityEmoji maps a severity level to a coloured dot for the card/menus.
 func severityEmoji(s incident.Severity) string {
 	switch s {
 	case incident.SeverityLow:
@@ -20,8 +19,6 @@ func severityEmoji(s incident.Severity) string {
 	}
 }
 
-// incidentCard renders the greeting posted inside the incident topic: the
-// incident summary followed by the topic rules and the available commands.
 func incidentCard(title string, sev incident.Severity, status incident.Status) string {
 	return fmt.Sprintf(
 		"🚨 Incident Investigation Started\n\n"+

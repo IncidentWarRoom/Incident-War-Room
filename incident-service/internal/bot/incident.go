@@ -99,10 +99,6 @@ func (h *Handler) createIncident(c telebot.Context, description string) error {
 	return nil
 }
 
-// refreshAnnouncement re-renders the main-chat announcement of inc in place so
-// it stays in sync with metadata changed from inside the topic (e.g. severity).
-// It is best-effort: if the announcement is unknown or the edit fails, the
-// topic card is still authoritative.
 func (h *Handler) refreshAnnouncement(c telebot.Context, inc incident.Incident) {
 	chat := c.Chat()
 	topicID := threadID(c)

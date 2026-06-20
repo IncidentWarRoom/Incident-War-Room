@@ -111,7 +111,6 @@ func TestSeverityChangeRefreshesMainChatAnnouncement(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	// Severity bumped to HIGH from inside the incident topic (thread 777).
 	updated := incident.Incident{Title: "db down", TopicID: 777, Severity: incident.SeverityHigh, Status: incident.StatusActive}
 	h.refreshAnnouncement(&mockContext{threadID: 777}, updated)
 
@@ -125,7 +124,6 @@ func TestSeverityChangeRefreshesMainChatAnnouncement(t *testing.T) {
 		t.Errorf("refreshed announcement %q lost the topic link", api.edited[0].what)
 	}
 
-	// Once the announcement is forgotten (e.g. on close), refresh is a no-op.
 	h.forgetAnnouncement(0, 777)
 	h.refreshAnnouncement(&mockContext{threadID: 777}, updated)
 	if len(api.edited) != 1 {
