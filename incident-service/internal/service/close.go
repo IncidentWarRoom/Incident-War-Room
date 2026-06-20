@@ -15,6 +15,7 @@ import (
 func (s *Service) CloseIncident(
 	ctx context.Context,
 	chatID int64,
+	topicID int64,
 	userID *int64,
 	username string,
 ) (*incident.Incident, error) {
@@ -22,7 +23,7 @@ func (s *Service) CloseIncident(
 
 	var active *incident.Incident
 	err := s.tx.WithTx(ctx, func(incidents incident.Repository, events event.Repository) error {
-		inc, err := incidents.GetActiveByChatID(ctx, chatID)
+		inc, err := incidents.GetActiveByTopicID(ctx, chatID, topicID)
 		if err != nil {
 			return err
 		}

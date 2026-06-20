@@ -19,6 +19,7 @@ import (
 func (s *Service) CreateIncident(
 	ctx context.Context,
 	chatID int64,
+	topicID int64,
 	title string,
 	severity incident.Severity,
 	userID *int64,
@@ -43,6 +44,7 @@ func (s *Service) CreateIncident(
 		Severity:  severity,
 		Status:    incident.StatusActive,
 		ChatID:    chatID,
+		TopicID:   topicID,
 		CreatedBy: userID,
 	}
 
@@ -72,6 +74,7 @@ func (s *Service) CreateIncident(
 func (s *Service) AddTimelineEvent(
 	ctx context.Context,
 	chatID int64,
+	topicID int64,
 	userID *int64,
 	username string,
 	message string,
@@ -83,7 +86,7 @@ func (s *Service) AddTimelineEvent(
 		return nil, errs.New(errs.KindValidation, op, "message is required")
 	}
 
-	active, err := s.incidents.GetActiveByChatID(ctx, chatID)
+	active, err := s.incidents.GetActiveByTopicID(ctx, chatID, topicID)
 	if err != nil {
 		return nil, err
 	}

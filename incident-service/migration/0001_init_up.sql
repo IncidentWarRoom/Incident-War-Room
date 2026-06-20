@@ -21,13 +21,14 @@ CREATE TABLE incidents (
     severity    incident_severity NOT NULL DEFAULT 'MEDIUM',
     status      incident_status   NOT NULL DEFAULT 'ACTIVE',
     chat_id     BIGINT NOT NULL,
+    topic_id    BIGINT NOT NULL DEFAULT 0,
     created_by  BIGINT,                         -- tg_user_id
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     closed_at   TIMESTAMPTZ
 );
 
-CREATE UNIQUE INDEX idx_incidents_one_active_per_chat
-    ON incidents (chat_id)
+CREATE UNIQUE INDEX idx_incidents_one_active_per_topic
+    ON incidents (chat_id, topic_id)
     WHERE status = 'ACTIVE';
 
 CREATE INDEX idx_incidents_chat_id

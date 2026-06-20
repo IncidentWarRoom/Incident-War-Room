@@ -35,7 +35,6 @@ func main() {
 	reports := reportclient.New(cfg.ReportServiceURL)
 
 	svc := service.New(incidents, events, txManager, reports)
-	handler := bot.New(svc)
 
 	tgBot, err := telebot.NewBot(telebot.Settings{
 		Token:  cfg.BotToken,
@@ -45,6 +44,7 @@ func main() {
 		log.Fatalf("%v", errs.Wrapf(errs.KindUnavailable, "main", err, "connect to Telegram Bot API"))
 	}
 
+	handler := bot.New(svc, tgBot)
 	handler.Register(tgBot)
 
 	fmt.Println("Bot started")
