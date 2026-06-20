@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -99,6 +100,44 @@ func (r *IncidentRepository) UpdateSeverity(ctx context.Context, id uuid.UUID, s
 	tag, err := r.db.Exec(ctx, query, id, severity)
 	if err != nil {
 		return errs.Wrapf(errs.KindInternal, "repository.Incident.UpdateSeverity", err, "update incident severity")
+	}
+	if tag.RowsAffected() == 0 {
+		return errs.ErrIncidentNotFound
+	}
+
+	return nil
+}
+
+func (r *IncidentRepository) UpdateTopicID(ctx context.Context, id uuid.UUID, topicID int64) error {
+	const query = `UPDATE incidents SET topic_id = $2 WHERE id = $1`
+
+	tag, err := r.db.Exec(ctx, query, id, topicID)
+	if err != nil {
+		return errs.Wrapf(errs.KindInternal, "repository.Incident.UpdateTopicID", err, "update incident topic id")
+	}
+	if tag.RowsAffected() == 0 {
+		return errs.ErrIncidentNotFound
+	}
+
+	return nil
+}
+
+func (r *IncidentRepository) UpdateReport(ctx context.Context, id uuid.UUID, telegraphURLs []string, reportURL string) error {
+	const op = "repository.Incident.UpdateReport"
+	const query = `UPDATE incidents SET telegraph_urls = $2::jsonb, report_url = $3 WHERE id = $1`
+
+	if telegraphURLs == nil {
+		telegraphURLs = []string{}
+	}
+
+	urls, err := json.Marshal(telegraphURLs)
+	if err != nil {
+		return errs.Wrapf(errs.KindInternal, op, err, "marshal telegraph urls")
+	}
+
+	tag, err := r.db.Exec(ctx, query, id, string(urls), reportURL)
+	if err != nil {
+		return errs.Wrapf(errs.KindInternal, op, err, "update incident report")
 	}
 	if tag.RowsAffected() == 0 {
 		return errs.ErrIncidentNotFound

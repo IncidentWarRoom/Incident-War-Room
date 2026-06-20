@@ -22,6 +22,9 @@ type Repository interface {
 	// UpdateSeverity returns errs.ErrIncidentNotFound if no incident exists with the given ID.
 	UpdateSeverity(ctx context.Context, id uuid.UUID, severity Severity) error
 
+	UpdateTopicID(ctx context.Context, id uuid.UUID, topicID int64) error
+	UpdateReport(ctx context.Context, id uuid.UUID, telegraphURLs []string, reportURL string) error
+
 	// Close marks an active incident as closed.
 	// Returns errs.ErrIncidentNotFound if the incident does not exist,
 	// or errs.ErrIncidentAlreadyClosed if it is already closed.

@@ -34,7 +34,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./incident-service/migration/0001_init_up.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./incident-service/migration/0001_init_up.sql:/docker-entrypoint-initdb.d/0001_init.sql:ro
+      - ./incident-service/migration/0002_reporting_fields_up.sql:/docker-entrypoint-initdb.d/0002_reporting_fields.sql:ro
     ports:
       - "5432:5432"
     healthcheck:
