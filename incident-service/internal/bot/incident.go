@@ -139,6 +139,7 @@ func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 	userID, username := sender(c)
 
 	pdf, reportErr := h.svc.GenerateReport(ctx, chat.ID, topicID)
+	timelineURLs, pubErr := h.svc.PublishTimeline(ctx, chat.ID, topicID)
 
 	inc, err := h.svc.CloseIncident(ctx, chat.ID, topicID, userID, username)
 	if err != nil {
@@ -146,7 +147,12 @@ func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 		return nil, c.Send(userError(err))
 	}
 
-	if _, err := h.api.Send(chat, response.IncidentClosed(*inc, nil), telebot.ModeHTML); err != nil {
+	if pubErr != nil {
+		log.Printf("bot: publish timeline: %v", pubErr)
+		timelineURLs = nil
+	}
+
+	if _, err := h.api.Send(chat, response.IncidentClosed(*inc, timelineURLs), telebot.ModeHTML); err != nil {
 		return inc, err
 	}
 
