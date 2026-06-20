@@ -4,3 +4,5 @@ pydantic
 reportlab
 pytest
 httpx
+boto3
+python-dotenv
