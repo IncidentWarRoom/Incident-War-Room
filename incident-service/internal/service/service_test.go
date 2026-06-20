@@ -76,7 +76,7 @@ func (f *fakeIncidents) UpdateTopicID(_ context.Context, id uuid.UUID, topicID i
 	if !ok {
 		return errs.ErrIncidentNotFound
 	}
-	inc.TopicID = &topicID
+	inc.TopicID = topicID
 	return nil
 }
 
