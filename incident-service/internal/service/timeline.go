@@ -8,12 +8,6 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/timeline"
 )
 
-// GetActiveIncident returns the chat's active incident, or
-// errs.ErrNoActiveIncident if there is none.
-func (s *Service) GetActiveIncident(ctx context.Context, chatID int64) (*incident.Incident, error) {
-	return s.incidents.GetActiveByChatID(ctx, chatID)
-}
-
 // GetTimeline returns the chat's active incident together with its events in
 // chronological order. Returns errs.ErrNoActiveIncident if the chat has no
 // active incident.
@@ -37,5 +31,15 @@ func (s *Service) PublishTimeline(ctx context.Context, chatID, topicID int64) ([
 		return nil, err
 	}
 
-	return s.timelines.Publish(ctx, timeline.Timeline{Incident: *inc, Events: events})
+	urls, err := s.timelines.Publish(ctx, timeline.Timeline{Incident: *inc, Events: events})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.incidents.UpdateTelegraphURLs(ctx, inc.ID, urls); err != nil {
+		return nil, err
+	}
+	inc.TelegraphURLs = urls
+
+	return urls, nil
 }

@@ -57,7 +57,7 @@ func (r *IncidentRepository) Create(ctx context.Context, inc *incident.Incident)
 func (r *IncidentRepository) GetByID(ctx context.Context, id uuid.UUID) (*incident.Incident, error) {
 	const op = "repository.Incident.GetByID"
 	const query = `
-		SELECT id, title, severity, status, chat_id, topic_id, created_by, created_at, closed_at
+		SELECT id, title, severity, status, chat_id, topic_id, created_by, created_at, closed_at, telegraph_urls, report_url
 		FROM incidents
 		WHERE id = $1`
 
@@ -72,30 +72,10 @@ func (r *IncidentRepository) GetByID(ctx context.Context, id uuid.UUID) (*incide
 	return inc, nil
 }
 
-// GetActiveByChatID returns the chat's active incident,
-// or errs.ErrNoActiveIncident if the chat has no active incident.
-func (r *IncidentRepository) GetActiveByChatID(ctx context.Context, chatID int64) (*incident.Incident, error) {
-	const op = "repository.Incident.GetActiveByChatID"
-	const query = `
-		SELECT id, title, severity, status, chat_id, topic_id, created_by, created_at, closed_at
-		FROM incidents
-		WHERE chat_id = $1 AND status = $2`
-
-	inc, err := scanIncident(r.db.QueryRow(ctx, query, chatID, incident.StatusActive))
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errs.ErrNoActiveIncident
-		}
-		return nil, errs.Wrapf(errs.KindInternal, op, err, "select incident")
-	}
-
-	return inc, nil
-}
-
 func (r *IncidentRepository) GetActiveByTopicID(ctx context.Context, chatID, topicID int64) (*incident.Incident, error) {
 	const op = "repository.Incident.GetActiveByTopicID"
 	const query = `
-		SELECT id, title, severity, status, chat_id, topic_id, created_by, created_at, closed_at
+		SELECT id, title, severity, status, chat_id, topic_id, created_by, created_at, closed_at, telegraph_urls, report_url
 		FROM incidents
 		WHERE chat_id = $1 AND topic_id = $2 AND status = $3`
 
@@ -126,23 +106,9 @@ func (r *IncidentRepository) UpdateSeverity(ctx context.Context, id uuid.UUID, s
 	return nil
 }
 
-func (r *IncidentRepository) UpdateTopicID(ctx context.Context, id uuid.UUID, topicID int64) error {
-	const query = `UPDATE incidents SET topic_id = $2 WHERE id = $1`
-
-	tag, err := r.db.Exec(ctx, query, id, topicID)
-	if err != nil {
-		return errs.Wrapf(errs.KindInternal, "repository.Incident.UpdateTopicID", err, "update incident topic id")
-	}
-	if tag.RowsAffected() == 0 {
-		return errs.ErrIncidentNotFound
-	}
-
-	return nil
-}
-
-func (r *IncidentRepository) UpdateReport(ctx context.Context, id uuid.UUID, telegraphURLs []string, reportURL string) error {
-	const op = "repository.Incident.UpdateReport"
-	const query = `UPDATE incidents SET telegraph_urls = $2::jsonb, report_url = $3 WHERE id = $1`
+func (r *IncidentRepository) UpdateTelegraphURLs(ctx context.Context, id uuid.UUID, telegraphURLs []string) error {
+	const op = "repository.Incident.UpdateTelegraphURLs"
+	const query = `UPDATE incidents SET telegraph_urls = $2::jsonb WHERE id = $1`
 
 	if telegraphURLs == nil {
 		telegraphURLs = []string{}
@@ -153,9 +119,9 @@ func (r *IncidentRepository) UpdateReport(ctx context.Context, id uuid.UUID, tel
 		return errs.Wrapf(errs.KindInternal, op, err, "marshal telegraph urls")
 	}
 
-	tag, err := r.db.Exec(ctx, query, id, string(urls), reportURL)
+	tag, err := r.db.Exec(ctx, query, id, string(urls))
 	if err != nil {
-		return errs.Wrapf(errs.KindInternal, op, err, "update incident report")
+		return errs.Wrapf(errs.KindInternal, op, err, "update incident telegraph urls")
 	}
 	if tag.RowsAffected() == 0 {
 		return errs.ErrIncidentNotFound
@@ -203,7 +169,8 @@ func (r *IncidentRepository) Close(ctx context.Context, id uuid.UUID, closedAt t
 }
 
 // scanIncident reads a single incident row in the standard column order:
-// id, title, severity, status, chat_id, topic_id, created_by, created_at, closed_at.
+// id, title, severity, status, chat_id, topic_id, created_by, created_at,
+// closed_at, telegraph_urls, report_url.
 // Callers map pgx.ErrNoRows to their own "not found" error.
 func scanIncident(row pgx.Row) (*incident.Incident, error) {
 	var inc incident.Incident
@@ -218,6 +185,8 @@ func scanIncident(row pgx.Row) (*incident.Incident, error) {
 		&inc.CreatedBy,
 		&inc.CreatedAt,
 		&inc.ClosedAt,
+		&inc.TelegraphURLs,
+		&inc.ReportURL,
 	)
 	if err != nil {
 		return nil, err
