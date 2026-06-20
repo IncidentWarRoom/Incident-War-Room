@@ -18,6 +18,7 @@ type mockContext struct {
 	chatID     int64
 	threadID   int64
 	user       *telebot.User
+	message    *telebot.Message
 	sent       []string
 	sentThread []int
 }
@@ -27,6 +28,9 @@ func (m *mockContext) Args() []string { return m.args }
 func (m *mockContext) Chat() *telebot.Chat { return &telebot.Chat{ID: m.chatID} }
 
 func (m *mockContext) Message() *telebot.Message {
+	if m.message != nil {
+		return m.message
+	}
 	return &telebot.Message{ThreadID: int(m.threadID)}
 }
 
