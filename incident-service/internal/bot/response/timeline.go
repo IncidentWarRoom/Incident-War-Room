@@ -26,6 +26,10 @@ func Timeline(inc incident.Incident, events []event.Event) string {
 	return b.String()
 }
 
+func TimelineUnavailable() string {
+	return "\n\n📄 <i>Telegraph is unavailable right now — the full timeline was not published.</i>"
+}
+
 func TimelineLink(urls []string) string {
 	if len(urls) == 0 {
 		return ""

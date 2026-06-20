@@ -22,8 +22,10 @@ func (h *Handler) HandleTimeline(c telebot.Context) error {
 
 	msg := response.Timeline(*inc, events)
 	if len(events) > 0 {
-		if urls, err := h.svc.PublishTimeline(ctx, chatID, topicID); err != nil {
+		urls, err := h.svc.PublishTimeline(ctx, chatID, topicID)
+		if err != nil {
 			log.Printf("bot: publish timeline: %v", err)
+			msg += response.TimelineUnavailable()
 		} else {
 			msg += response.TimelineLink(urls)
 		}
