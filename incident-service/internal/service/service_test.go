@@ -90,6 +90,15 @@ func (f *fakeIncidents) UpdateReport(_ context.Context, id uuid.UUID, telegraphU
 	return nil
 }
 
+func (f *fakeIncidents) UpdateReportURL(_ context.Context, id uuid.UUID, reportURL string) error {
+	inc, ok := f.byID[id]
+	if !ok {
+		return errs.ErrIncidentNotFound
+	}
+	inc.ReportURL = &reportURL
+	return nil
+}
+
 func (f *fakeIncidents) Close(_ context.Context, id uuid.UUID, closedAt time.Time) error {
 	inc, ok := f.byID[id]
 	if !ok {
@@ -148,16 +157,16 @@ func (f fakeTx) WithTx(_ context.Context, fn func(incident.Repository, event.Rep
 
 type fakeReports struct {
 	last report.Report
-	pdf  []byte
+	url  string
 	err  error
 }
 
-func (f *fakeReports) Generate(_ context.Context, r report.Report) ([]byte, error) {
+func (f *fakeReports) Generate(_ context.Context, r report.Report) (string, error) {
 	f.last = r
 	if f.err != nil {
-		return nil, f.err
+		return "", f.err
 	}
-	return f.pdf, nil
+	return f.url, nil
 }
 
 func newTestService() (*Service, *fakeIncidents, *fakeEvents) {

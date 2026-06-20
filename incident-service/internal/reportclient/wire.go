@@ -12,6 +12,10 @@ type request struct {
 	Timeline     []timelineDTO    `json:"timeline"`
 }
 
+type response struct {
+	ReportURL string `json:"reportUrl"`
+}
+
 type incidentDTO struct {
 	ID        string     `json:"id"`
 	Title     string     `json:"title"`
