@@ -33,6 +33,10 @@ func WithHTTPClient(h *http.Client) Option {
 	return func(c *Client) { c.http = h }
 }
 
+func WithBaseURL(baseURL string) Option {
+	return func(c *Client) { c.baseURL = strings.TrimRight(baseURL, "/") }
+}
+
 func WithAccessToken(token string) Option {
 	return func(c *Client) { c.token = strings.TrimSpace(token) }
 }
@@ -61,14 +65,28 @@ func (c *Client) Publish(ctx context.Context, t timeline.Timeline) ([]string, er
 		return nil, err
 	}
 
-	pages := buildPages(t.Incident, t.Events)
-	urls := make([]string, 0, len(pages))
+	pages := buildPages(t.Incident, t.Events, maxContentBytes)
+	created := make([]createdPage, 0, len(pages))
 	for _, p := range pages {
-		u, err := c.createPage(ctx, token, p)
+		cp, err := c.createPage(ctx, token, p)
 		if err != nil {
 			return nil, errs.Wrapf(errs.KindUnavailable, op, err, "create telegraph page")
 		}
-		urls = append(urls, u)
+		created = append(created, cp)
+	}
+
+	urls := make([]string, len(created))
+	for i, cp := range created {
+		urls[i] = cp.url
+	}
+
+	if len(pages) > 1 {
+		for i, p := range pages {
+			content := paginate(p.content, urls, i)
+			if err := c.editPage(ctx, token, created[i].path, p.title, content); err != nil {
+				return nil, errs.Wrapf(errs.KindUnavailable, op, err, "add pagination to telegraph page")
+			}
+		}
 	}
 
 	return urls, nil
@@ -96,14 +114,20 @@ func (c *Client) ensureToken(ctx context.Context) (string, error) {
 	return c.token, nil
 }
 
-func (c *Client) createPage(ctx context.Context, token string, p page) (string, error) {
+type createdPage struct {
+	url  string
+	path string
+}
+
+func (c *Client) createPage(ctx context.Context, token string, p page) (createdPage, error) {
 	content, err := json.Marshal(p.content)
 	if err != nil {
-		return "", errs.Wrapf(errs.KindInternal, "telegraphclient.createPage", err, "marshal content")
+		return createdPage{}, errs.Wrapf(errs.KindInternal, "telegraphclient.createPage", err, "marshal content")
 	}
 
 	var result struct {
-		URL string `json:"url"`
+		URL  string `json:"url"`
+		Path string `json:"path"`
 	}
 	if err := c.call(ctx, "createPage", url.Values{
 		"access_token": {token},
@@ -111,10 +135,24 @@ func (c *Client) createPage(ctx context.Context, token string, p page) (string, 
 		"author_name":  {c.authorName},
 		"content":      {string(content)},
 	}, &result); err != nil {
-		return "", err
+		return createdPage{}, err
 	}
 
-	return result.URL, nil
+	return createdPage{url: result.URL, path: result.Path}, nil
+}
+
+func (c *Client) editPage(ctx context.Context, token, path, title string, content []any) error {
+	body, err := json.Marshal(content)
+	if err != nil {
+		return errs.Wrapf(errs.KindInternal, "telegraphclient.editPage", err, "marshal content")
+	}
+
+	return c.call(ctx, "editPage/"+path, url.Values{
+		"access_token": {token},
+		"title":        {title},
+		"author_name":  {c.authorName},
+		"content":      {string(body)},
+	}, nil)
 }
 
 func (c *Client) call(ctx context.Context, method string, form url.Values, out any) error {

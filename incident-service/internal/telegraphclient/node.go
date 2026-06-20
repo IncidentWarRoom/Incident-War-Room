@@ -30,7 +30,7 @@ type page struct {
 	content []any
 }
 
-func buildPages(inc incident.Incident, events []event.Event) []page {
+func buildPages(inc incident.Incident, events []event.Event, maxBytes int) []page {
 	header := headerNodes(inc)
 
 	var pages []page
@@ -46,7 +46,7 @@ func buildPages(inc incident.Incident, events []event.Event) []page {
 	for _, e := range events {
 		n := eventNode(e)
 		ns := nodeSize(n)
-		if len(content) > len(header) && size+ns > maxContentBytes {
+		if len(content) > len(header) && size+ns > maxBytes {
 			flush()
 		}
 		content = append(content, n)
@@ -56,6 +56,39 @@ func buildPages(inc incident.Incident, events []event.Event) []page {
 
 	titlePages(pages, inc.Title)
 	return pages
+}
+
+func paginate(content []any, urls []string, current int) []any {
+	if len(urls) < 2 {
+		return content
+	}
+
+	nav := navNode(urls, current)
+	out := make([]any, 0, len(content)+2)
+	out = append(out, nav)
+	out = append(out, content...)
+	out = append(out, nav)
+	return out
+}
+
+func navNode(urls []string, current int) node {
+	children := []any{element("b", text("Pages: "))}
+	for i, u := range urls {
+		label := fmt.Sprintf("%d", i+1)
+		if i == current {
+			children = append(children, element("b", text(label)))
+		} else {
+			children = append(children, link(u, label))
+		}
+		if i < len(urls)-1 {
+			children = append(children, text(" · "))
+		}
+	}
+	return node{Tag: "p", Children: children}
+}
+
+func link(href, label string) node {
+	return node{Tag: "a", Attrs: &attrs{Href: href}, Children: []any{text(label)}}
 }
 
 func titlePages(pages []page, title string) {
