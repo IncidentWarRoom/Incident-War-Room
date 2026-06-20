@@ -7,6 +7,7 @@ package bot
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"gopkg.in/telebot.v3"
@@ -34,19 +35,59 @@ type IncidentService interface {
 
 type TelegramAPI interface {
 	Send(to telebot.Recipient, what interface{}, opts ...interface{}) (*telebot.Message, error)
+	Edit(msg telebot.Editable, what interface{}, opts ...interface{}) (*telebot.Message, error)
 	CreateTopic(chat *telebot.Chat, topic *telebot.Topic) (*telebot.Topic, error)
 	DeleteTopic(chat *telebot.Chat, topic *telebot.Topic) error
+}
+
+// announceKey identifies the main-chat announcement of a single incident.
+type announceKey struct {
+	chatID  int64
+	topicID int64
 }
 
 // Handler wires Telegram updates to the incident use cases.
 type Handler struct {
 	svc IncidentService
 	api TelegramAPI
+
+	// announcements remembers the main-chat message announcing each incident so
+	// it can be edited in place when the incident metadata (e.g. severity)
+	// changes from inside the topic. It is best-effort, in-memory state: a bot
+	// restart simply leaves older announcements static.
+	mu            sync.Mutex
+	announcements map[announceKey]telebot.Editable
 }
 
 // New returns a Handler backed by svc and the Telegram API.
 func New(svc IncidentService, api TelegramAPI) *Handler {
-	return &Handler{svc: svc, api: api}
+	return &Handler{
+		svc:           svc,
+		api:           api,
+		announcements: make(map[announceKey]telebot.Editable),
+	}
+}
+
+// rememberAnnouncement stores the main-chat announcement message for an incident.
+func (h *Handler) rememberAnnouncement(chatID, topicID int64, msg telebot.Editable) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.announcements[announceKey{chatID, topicID}] = msg
+}
+
+// announcement returns the stored main-chat announcement message for an incident.
+func (h *Handler) announcement(chatID, topicID int64) (telebot.Editable, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	msg, ok := h.announcements[announceKey{chatID, topicID}]
+	return msg, ok
+}
+
+// forgetAnnouncement drops the stored announcement for a closed incident.
+func (h *Handler) forgetAnnouncement(chatID, topicID int64) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.announcements, announceKey{chatID, topicID})
 }
 
 // reqContext derives a bounded context for a single update.

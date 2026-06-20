@@ -98,6 +98,41 @@ func TestHandleIncidentCreateOpensTopicAndShowsCard(t *testing.T) {
 	}
 }
 
+func TestSeverityChangeRefreshesMainChatAnnouncement(t *testing.T) {
+	api := newFakeAPI()
+	api.createdTopic.ThreadID = 777
+	h := New(&fakeService{
+		create: func(_ int64, topicID int64, title string, _ incident.Severity, _ *int64, _ string) (*incident.Incident, error) {
+			return &incident.Incident{Title: title, TopicID: topicID, Severity: incident.SeverityMedium, Status: incident.StatusActive}, nil
+		},
+	}, api)
+
+	if err := h.HandleIncident(&mockContext{args: []string{"create", "db", "down"}}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	// Severity bumped to HIGH from inside the incident topic (thread 777).
+	updated := incident.Incident{Title: "db down", TopicID: 777, Severity: incident.SeverityHigh, Status: incident.StatusActive}
+	h.refreshAnnouncement(&mockContext{threadID: 777}, updated)
+
+	if len(api.edited) != 1 {
+		t.Fatalf("expected the announcement to be edited once, got %v", api.edited)
+	}
+	if !strings.Contains(api.edited[0].what, "HIGH") {
+		t.Errorf("refreshed announcement %q does not show the new severity", api.edited[0].what)
+	}
+	if !strings.Contains(api.edited[0].what, "/777") {
+		t.Errorf("refreshed announcement %q lost the topic link", api.edited[0].what)
+	}
+
+	// Once the announcement is forgotten (e.g. on close), refresh is a no-op.
+	h.forgetAnnouncement(0, 777)
+	h.refreshAnnouncement(&mockContext{threadID: 777}, updated)
+	if len(api.edited) != 1 {
+		t.Errorf("expected no further edits after the announcement was forgotten, got %v", api.edited)
+	}
+}
+
 func TestHandleIncidentCreateReportsForumRequiredOnTopicError(t *testing.T) {
 	api := newFakeAPI()
 	api.createErr = errs.New(errs.KindUnavailable, "tg", "not a forum")

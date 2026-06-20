@@ -111,6 +111,7 @@ type fakeAPI struct {
 	createErr    error
 	deleted      []int
 	sent         []sentMessage
+	edited       []sentMessage
 }
 
 type sentMessage struct {
@@ -145,6 +146,24 @@ func (a *fakeAPI) Send(_ telebot.Recipient, what interface{}, opts ...interface{
 		msg.what = fmt.Sprintf("<%T>", what)
 	}
 	a.sent = append(a.sent, msg)
+	return &telebot.Message{}, nil
+}
+
+func (a *fakeAPI) Edit(_ telebot.Editable, what interface{}, opts ...interface{}) (*telebot.Message, error) {
+	var markup *telebot.ReplyMarkup
+	for _, o := range opts {
+		if v, ok := o.(*telebot.ReplyMarkup); ok {
+			markup = v
+		}
+	}
+
+	msg := sentMessage{markup: markup}
+	if s, ok := what.(string); ok {
+		msg.what = s
+	} else {
+		msg.what = fmt.Sprintf("<%T>", what)
+	}
+	a.edited = append(a.edited, msg)
 	return &telebot.Message{}, nil
 }
 

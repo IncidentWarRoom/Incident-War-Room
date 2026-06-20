@@ -86,12 +86,39 @@ func (h *Handler) createIncident(c telebot.Context, description string) error {
 		return err
 	}
 
-	_, err = h.api.Send(
+	announcement, err := h.api.Send(
 		chat,
 		response.IncidentCreated(*inc, topicLink(chat, topic.ThreadID)),
 		telebot.ModeHTML,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	h.rememberAnnouncement(chat.ID, int64(topic.ThreadID), announcement)
+	return nil
+}
+
+// refreshAnnouncement re-renders the main-chat announcement of inc in place so
+// it stays in sync with metadata changed from inside the topic (e.g. severity).
+// It is best-effort: if the announcement is unknown or the edit fails, the
+// topic card is still authoritative.
+func (h *Handler) refreshAnnouncement(c telebot.Context, inc incident.Incident) {
+	chat := c.Chat()
+	topicID := threadID(c)
+
+	msg, ok := h.announcement(chat.ID, topicID)
+	if !ok {
+		return
+	}
+
+	if _, err := h.api.Edit(
+		msg,
+		response.IncidentCreated(inc, topicLink(chat, int(topicID))),
+		telebot.ModeHTML,
+	); err != nil {
+		log.Printf("bot: refresh main-chat announcement: %v", err)
+	}
 }
 
 func (h *Handler) addUpdate(c telebot.Context, message string) error {
@@ -147,6 +174,7 @@ func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 		}
 	}
 
+	h.forgetAnnouncement(chat.ID, topicID)
 	return inc, nil
 }
 
