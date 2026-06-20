@@ -5,6 +5,7 @@ import (
 
 	"github.com/cQu1x/Incident-War-Room/internal/domain/event"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
+	"github.com/cQu1x/Incident-War-Room/internal/domain/timeline"
 )
 
 // GetActiveIncident returns the chat's active incident, or
@@ -28,4 +29,13 @@ func (s *Service) GetTimeline(ctx context.Context, chatID, topicID int64) (*inci
 	}
 
 	return active, events, nil
+}
+
+func (s *Service) PublishTimeline(ctx context.Context, chatID, topicID int64) ([]string, error) {
+	inc, events, err := s.GetTimeline(ctx, chatID, topicID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.timelines.Publish(ctx, timeline.Timeline{Incident: *inc, Events: events})
 }

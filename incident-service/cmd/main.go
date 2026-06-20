@@ -14,6 +14,7 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/reportclient"
 	"github.com/cQu1x/Incident-War-Room/internal/repository"
 	"github.com/cQu1x/Incident-War-Room/internal/service"
+	"github.com/cQu1x/Incident-War-Room/internal/telegraphclient"
 )
 
 func main() {
@@ -33,8 +34,9 @@ func main() {
 	events := repository.NewEventRepository(pool)
 	txManager := repository.NewTxManager(pool)
 	reports := reportclient.New(cfg.ReportServiceURL)
+	timelines := telegraphclient.New(telegraphclient.WithAccessToken(cfg.TelegraphAccessToken))
 
-	svc := service.New(incidents, events, txManager, reports)
+	svc := service.New(incidents, events, txManager, reports, timelines)
 
 	tgBot, err := telebot.NewBot(telebot.Settings{
 		Token:  cfg.BotToken,

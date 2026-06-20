@@ -10,6 +10,7 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/event"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/report"
+	"github.com/cQu1x/Incident-War-Room/internal/domain/timeline"
 	"github.com/cQu1x/Incident-War-Room/internal/errs"
 )
 
@@ -169,10 +170,24 @@ func (f *fakeReports) Generate(_ context.Context, r report.Report) (string, erro
 	return f.url, nil
 }
 
+type fakeTimelines struct {
+	last timeline.Timeline
+	urls []string
+	err  error
+}
+
+func (f *fakeTimelines) Publish(_ context.Context, t timeline.Timeline) ([]string, error) {
+	f.last = t
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.urls, nil
+}
+
 func newTestService() (*Service, *fakeIncidents, *fakeEvents) {
 	incidents := newFakeIncidents()
 	events := newFakeEvents()
-	svc := New(incidents, events, fakeTx{incidents: incidents, events: events}, &fakeReports{})
+	svc := New(incidents, events, fakeTx{incidents: incidents, events: events}, &fakeReports{}, &fakeTimelines{})
 	return svc, incidents, events
 }
 
@@ -327,6 +342,40 @@ func TestGetTimeline(t *testing.T) {
 		svc, _, _ := newTestService()
 
 		_, _, err := svc.GetTimeline(ctx, 401, 401)
+		if errs.KindOf(err) != errs.KindNotFound {
+			t.Fatalf("expected not-found, got %v", err)
+		}
+	})
+}
+
+func TestPublishTimeline(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("publishes the active incident timeline and returns urls", func(t *testing.T) {
+		incidents := newFakeIncidents()
+		events := newFakeEvents()
+		publisher := &fakeTimelines{urls: []string{"https://telegra.ph/timeline-1"}}
+		svc := New(incidents, events, fakeTx{incidents: incidents, events: events}, &fakeReports{}, publisher)
+
+		inc, _ := svc.CreateIncident(ctx, 600, 600, "outage", incident.SeverityHigh, ptrInt64(1), "alice")
+		_, _ = svc.AddTimelineEvent(ctx, 600, 600, ptrInt64(1), "alice", "looking into it")
+
+		urls, err := svc.PublishTimeline(ctx, 600, 600)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(urls) != 1 || urls[0] != "https://telegra.ph/timeline-1" {
+			t.Fatalf("unexpected urls: %v", urls)
+		}
+		if publisher.last.Incident.ID != inc.ID || len(publisher.last.Events) != 2 {
+			t.Fatalf("publisher received %+v", publisher.last)
+		}
+	})
+
+	t.Run("no active incident", func(t *testing.T) {
+		svc, _, _ := newTestService()
+
+		_, err := svc.PublishTimeline(ctx, 601, 601)
 		if errs.KindOf(err) != errs.KindNotFound {
 			t.Fatalf("expected not-found, got %v", err)
 		}

@@ -216,6 +216,25 @@ func TestHandleIncidentCloseSendsSummaryAndReportToGeneralAndDeletesTopic(t *tes
 	}
 }
 
+func TestHandleIncidentCloseLinksTelegraphTimeline(t *testing.T) {
+	now := time.Now()
+	api := newFakeAPI()
+	h := New(&fakeService{
+		report: func(int64, int64) (string, error) { return "https://reports.example/r/abc.pdf", nil },
+		publish: func(int64, int64) ([]string, error) {
+			return []string{"https://telegra.ph/timeline-1"}, nil
+		},
+		closeInc: func(int64, int64, *int64, string) (*incident.Incident, error) {
+			return &incident.Incident{Title: "outage", CreatedAt: now, ClosedAt: &now}, nil
+		},
+	}, api)
+
+	if err := h.HandleIncident(&mockContext{args: []string{"close"}, threadID: 7}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	apiSentContains(t, api, "https://telegra.ph/timeline-1")
+}
+
 func TestHandleIncidentCloseStillClosesWhenReportFails(t *testing.T) {
 	now := time.Now()
 	api := newFakeAPI()

@@ -5,7 +5,6 @@ import (
 
 	"gopkg.in/telebot.v3"
 
-	"github.com/cQu1x/Incident-War-Room/internal/bot/response"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 )
 
@@ -17,14 +16,16 @@ func (h *Handler) handleShowTimeline(c telebot.Context) error {
 	ctx, cancel := reqContext()
 	defer cancel()
 
-	inc, events, err := h.svc.GetTimeline(ctx, c.Chat().ID, threadID(c))
+	topicID := threadID(c)
+
+	msg, err := h.renderTimeline(ctx, c.Chat().ID, topicID)
 	if err != nil {
 		log.Printf("bot: show timeline: %v", err)
 		return c.Send(userError(err))
 	}
 
-	return c.Send(response.Timeline(*inc, events), &telebot.SendOptions{
-		ThreadID:  int(threadID(c)),
+	return c.Send(msg, &telebot.SendOptions{
+		ThreadID:  int(topicID),
 		ParseMode: telebot.ModeHTML,
 	})
 }
