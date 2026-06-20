@@ -1,10 +1,3 @@
-// Package telegraphclient is the infrastructure adapter that publishes an
-// incident timeline to Telegraph (https://telegra.ph) over its HTTP API. It
-// implements the domain timeline.Publisher port.
-//
-// A long timeline is split across several Telegraph pages; Publish returns
-// their URLs in reading order. Failures are wrapped into *errs.Error: an
-// unreachable or failing service yields errs.KindUnavailable.
 package telegraphclient
 
 import (
@@ -25,12 +18,6 @@ const (
 	defaultShortName = "Incident War Room"
 )
 
-// Client talks to the Telegraph API over HTTP. It implements
-// timeline.Publisher.
-//
-// An access token can be supplied up front (WithAccessToken); otherwise the
-// client creates a throwaway Telegraph account on first use and caches the
-// token for the rest of its lifetime.
 type Client struct {
 	baseURL    string
 	authorName string
@@ -40,26 +27,20 @@ type Client struct {
 	token string
 }
 
-// Option customizes a Client.
 type Option func(*Client)
 
-// WithHTTPClient sets a custom *http.Client (e.g. with a tuned transport).
 func WithHTTPClient(h *http.Client) Option {
 	return func(c *Client) { c.http = h }
 }
 
-// WithAccessToken pins a Telegraph access token, skipping account creation.
 func WithAccessToken(token string) Option {
 	return func(c *Client) { c.token = strings.TrimSpace(token) }
 }
 
-// WithAuthorName sets the author shown on published pages.
 func WithAuthorName(name string) Option {
 	return func(c *Client) { c.authorName = name }
 }
 
-// New creates a Telegraph client. With no options it targets the public
-// Telegraph API and creates an anonymous account lazily.
 func New(opts ...Option) *Client {
 	c := &Client{
 		baseURL:    defaultBaseURL,
@@ -72,9 +53,6 @@ func New(opts ...Option) *Client {
 	return c
 }
 
-// Publish renders t into one or more Telegraph pages and returns their URLs in
-// reading order. A network failure or a Telegraph error yields
-// errs.KindUnavailable.
 func (c *Client) Publish(ctx context.Context, t timeline.Timeline) ([]string, error) {
 	const op = "telegraphclient.Publish"
 
@@ -96,8 +74,6 @@ func (c *Client) Publish(ctx context.Context, t timeline.Timeline) ([]string, er
 	return urls, nil
 }
 
-// ensureToken returns the cached access token, creating a Telegraph account on
-// first use.
 func (c *Client) ensureToken(ctx context.Context) (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -120,7 +96,6 @@ func (c *Client) ensureToken(ctx context.Context) (string, error) {
 	return c.token, nil
 }
 
-// createPage creates a single Telegraph page and returns its public URL.
 func (c *Client) createPage(ctx context.Context, token string, p page) (string, error) {
 	content, err := json.Marshal(p.content)
 	if err != nil {
@@ -142,8 +117,6 @@ func (c *Client) createPage(ctx context.Context, token string, p page) (string, 
 	return result.URL, nil
 }
 
-// call posts form values to a Telegraph API method and decodes result into out.
-// A Telegraph-level failure (ok=false) is returned as an *errs.Error.
 func (c *Client) call(ctx context.Context, method string, form url.Values, out any) error {
 	const op = "telegraphclient.call"
 

@@ -21,8 +21,6 @@ type Config struct {
 
 	ReportServiceURL string `env:"REPORT_SERVICE_URL" env-default:"http://localhost:8000"`
 
-	// TelegraphAccessToken pins a Telegraph account for publishing timelines.
-	// When empty, an anonymous account is created on first use.
 	TelegraphAccessToken string `env:"TELEGRAPH_ACCESS_TOKEN"`
 }
 
