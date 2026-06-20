@@ -29,7 +29,7 @@ func incidentCard(title string, sev incident.Severity, status incident.Status) s
 			"Rules:\n"+
 			"• Every message sent in this topic will be recorded in the incident timeline.\n"+
 			"• Only incident-related information should be posted here.\n"+
-			"• Media messages are not supported in this version.\n"+
+			"• Media messages (photos, video, documents, voice, stickers) are not allowed — use text.\n"+
 			"• This topic will be permanently deleted after the incident is closed.\n\n"+
 			"Available commands:\n"+
 			"• /timeline - see the timeline of the incident events in Telegraph pages format\n"+

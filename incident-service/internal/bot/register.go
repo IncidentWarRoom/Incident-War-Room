@@ -16,4 +16,18 @@ func (h *Handler) Register(b *telebot.Bot) {
 	b.Handle(&btnSevLow, h.handleSetSeverity)
 
 	b.Handle(telebot.OnText, h.HandleTopicText)
+
+	// Media is not recorded on the timeline; reject it in incident topics.
+	for _, ev := range []string{
+		telebot.OnPhoto,
+		telebot.OnVideo,
+		telebot.OnVideoNote,
+		telebot.OnDocument,
+		telebot.OnVoice,
+		telebot.OnAudio,
+		telebot.OnAnimation,
+		telebot.OnSticker,
+	} {
+		b.Handle(ev, h.HandleTopicMedia)
+	}
 }
