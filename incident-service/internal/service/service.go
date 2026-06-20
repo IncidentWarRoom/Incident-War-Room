@@ -11,6 +11,7 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/event"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/report"
+	"github.com/cQu1x/Incident-War-Room/internal/domain/timeline"
 )
 
 // TxManager runs a unit of work inside a single transaction, exposing the
@@ -31,15 +32,17 @@ type Service struct {
 	events    event.Repository
 	tx        TxManager
 	reports   report.Generator
+	timelines timeline.Publisher
 	now       func() time.Time
 }
 
-func New(incidents incident.Repository, events event.Repository, tx TxManager, reports report.Generator) *Service {
+func New(incidents incident.Repository, events event.Repository, tx TxManager, reports report.Generator, timelines timeline.Publisher) *Service {
 	return &Service{
 		incidents: incidents,
 		events:    events,
 		tx:        tx,
 		reports:   reports,
+		timelines: timelines,
 		now:       func() time.Time { return time.Now().UTC() },
 	}
 }
