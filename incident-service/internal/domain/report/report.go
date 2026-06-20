@@ -26,12 +26,6 @@ type Report struct {
 	Timeline     []event.Event
 }
 
-// Generator renders a Report into a document and returns its bytes (a PDF).
-// It is implemented by the infrastructure layer; the service depends only on
-// this abstraction.
-//
-// A renderer that is unreachable or fails yields an errs.KindUnavailable
-// error.
 type Generator interface {
-	Generate(ctx context.Context, r Report) ([]byte, error)
+	Generate(ctx context.Context, r Report) (string, error)
 }

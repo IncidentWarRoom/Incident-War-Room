@@ -26,6 +26,7 @@ type Repository interface {
 
 	UpdateTopicID(ctx context.Context, id uuid.UUID, topicID int64) error
 	UpdateReport(ctx context.Context, id uuid.UUID, telegraphURLs []string, reportURL string) error
+	UpdateReportURL(ctx context.Context, id uuid.UUID, reportURL string) error
 
 	// Close marks an active incident as closed.
 	// Returns errs.ErrIncidentNotFound if the incident does not exist,

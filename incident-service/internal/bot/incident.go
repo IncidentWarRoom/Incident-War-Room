@@ -1,7 +1,6 @@
 package bot
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"strconv"
@@ -138,7 +137,7 @@ func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 	topicID := threadID(c)
 	userID, username := sender(c)
 
-	pdf, reportErr := h.svc.GenerateReport(ctx, chat.ID, topicID)
+	reportURL, reportErr := h.svc.GenerateReport(ctx, chat.ID, topicID)
 	timelineURLs, pubErr := h.svc.PublishTimeline(ctx, chat.ID, topicID)
 
 	inc, err := h.svc.CloseIncident(ctx, chat.ID, topicID, userID, username)
@@ -152,21 +151,12 @@ func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 		timelineURLs = nil
 	}
 
-	if _, err := h.api.Send(chat, response.IncidentClosed(*inc, timelineURLs), telebot.ModeHTML); err != nil {
-		return inc, err
-	}
-
 	if reportErr != nil {
 		log.Printf("bot: generate report: %v", reportErr)
-		if _, err := h.api.Send(chat, "⚠️ The incident was closed, but the report could not be generated right now."); err != nil {
-			return inc, err
-		}
-	} else if _, err := h.api.Send(chat, &telebot.Document{
-		File:     telebot.FromReader(bytes.NewReader(pdf)),
-		FileName: "incident_report.pdf",
-		MIME:     "application/pdf",
-		Caption:  "📄 Incident report",
-	}); err != nil {
+		reportURL = ""
+	}
+
+	if _, err := h.api.Send(chat, response.IncidentClosed(*inc, timelineURLs, reportURL), telebot.ModeHTML); err != nil {
 		return inc, err
 	}
 

@@ -164,6 +164,21 @@ func (r *IncidentRepository) UpdateReport(ctx context.Context, id uuid.UUID, tel
 	return nil
 }
 
+func (r *IncidentRepository) UpdateReportURL(ctx context.Context, id uuid.UUID, reportURL string) error {
+	const op = "repository.Incident.UpdateReportURL"
+	const query = `UPDATE incidents SET report_url = $2 WHERE id = $1`
+
+	tag, err := r.db.Exec(ctx, query, id, reportURL)
+	if err != nil {
+		return errs.Wrapf(errs.KindInternal, op, err, "update incident report url")
+	}
+	if tag.RowsAffected() == 0 {
+		return errs.ErrIncidentNotFound
+	}
+
+	return nil
+}
+
 // Close marks an active incident as closed and records the closing time.
 // Returns errs.ErrIncidentNotFound if the incident does not exist,
 // or errs.ErrIncidentAlreadyClosed if it is not active anymore.

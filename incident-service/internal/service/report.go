@@ -7,23 +7,27 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/report"
 )
 
-// GenerateReport renders a PDF report for the chat's active incident. It loads
-// the incident together with its timeline, derives the participants from the
-// timeline users and delegates rendering to the report.Generator port.
-//
-// Returns errs.ErrNoActiveIncident if the chat has no active incident, or an
-// errs.KindUnavailable error if the report service is unreachable.
-func (s *Service) GenerateReport(ctx context.Context, chatID, topicID int64) ([]byte, error) {
+func (s *Service) GenerateReport(ctx context.Context, chatID, topicID int64) (string, error) {
 	inc, events, err := s.GetTimeline(ctx, chatID, topicID)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return s.reports.Generate(ctx, report.Report{
+	url, err := s.reports.Generate(ctx, report.Report{
 		Incident:     *inc,
 		Participants: participantsFromEvents(events),
 		Timeline:     events,
 	})
+	if err != nil {
+		return "", err
+	}
+
+	if err := s.incidents.UpdateReportURL(ctx, inc.ID, url); err != nil {
+		return "", err
+	}
+	inc.ReportURL = &url
+
+	return url, nil
 }
 
 // participantsFromEvents returns the distinct users of the events, preserving

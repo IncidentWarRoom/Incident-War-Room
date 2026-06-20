@@ -27,3 +27,6 @@ class ReportRequest(BaseModel):
     incident: IncidentInfo
     participants: List[Participant]
     timeline: List[TimelineEvent]
+
+class ReportResponse(BaseModel):
+    reportUrl: str = Field(..., description="Public URL of the generated PDF report")

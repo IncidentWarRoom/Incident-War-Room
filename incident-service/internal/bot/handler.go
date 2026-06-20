@@ -22,7 +22,7 @@ type IncidentService interface {
 	SetSeverity(ctx context.Context, chatID, topicID int64, severity incident.Severity) (*incident.Incident, error)
 	GetTimeline(ctx context.Context, chatID, topicID int64) (*incident.Incident, []event.Event, error)
 	PublishTimeline(ctx context.Context, chatID, topicID int64) ([]string, error)
-	GenerateReport(ctx context.Context, chatID, topicID int64) ([]byte, error)
+	GenerateReport(ctx context.Context, chatID, topicID int64) (string, error)
 }
 
 type TelegramAPI interface {
