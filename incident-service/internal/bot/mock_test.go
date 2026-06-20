@@ -77,6 +77,7 @@ type fakeService struct {
 	closeInc func(chatID, topicID int64, userID *int64, username string) (*incident.Incident, error)
 	setSev   func(chatID, topicID int64, sev incident.Severity) (*incident.Incident, error)
 	timeline func(chatID, topicID int64) (*incident.Incident, []event.Event, error)
+	publish  func(chatID, topicID int64) ([]string, error)
 	report   func(chatID, topicID int64) ([]byte, error)
 }
 
@@ -98,6 +99,13 @@ func (f *fakeService) SetSeverity(_ context.Context, chatID, topicID int64, sev 
 
 func (f *fakeService) GetTimeline(_ context.Context, chatID, topicID int64) (*incident.Incident, []event.Event, error) {
 	return f.timeline(chatID, topicID)
+}
+
+func (f *fakeService) PublishTimeline(_ context.Context, chatID, topicID int64) ([]string, error) {
+	if f.publish == nil {
+		return nil, nil
+	}
+	return f.publish(chatID, topicID)
 }
 
 func (f *fakeService) GenerateReport(_ context.Context, chatID, topicID int64) ([]byte, error) {

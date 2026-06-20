@@ -21,6 +21,7 @@ type IncidentService interface {
 	CloseIncident(ctx context.Context, chatID, topicID int64, userID *int64, username string) (*incident.Incident, error)
 	SetSeverity(ctx context.Context, chatID, topicID int64, severity incident.Severity) (*incident.Incident, error)
 	GetTimeline(ctx context.Context, chatID, topicID int64) (*incident.Incident, []event.Event, error)
+	PublishTimeline(ctx context.Context, chatID, topicID int64) ([]string, error)
 	GenerateReport(ctx context.Context, chatID, topicID int64) ([]byte, error)
 }
 

@@ -12,14 +12,25 @@ func (h *Handler) HandleTimeline(c telebot.Context) error {
 	ctx, cancel := reqContext()
 	defer cancel()
 
-	inc, events, err := h.svc.GetTimeline(ctx, c.Chat().ID, threadID(c))
+	chatID, topicID := c.Chat().ID, threadID(c)
+
+	inc, events, err := h.svc.GetTimeline(ctx, chatID, topicID)
 	if err != nil {
 		log.Printf("bot: get timeline: %v", err)
 		return c.Send(userError(err))
 	}
 
-	return c.Send(response.Timeline(*inc, events), &telebot.SendOptions{
-		ThreadID:  int(threadID(c)),
+	msg := response.Timeline(*inc, events)
+	if len(events) > 0 {
+		if urls, err := h.svc.PublishTimeline(ctx, chatID, topicID); err != nil {
+			log.Printf("bot: publish timeline: %v", err)
+		} else {
+			msg += response.TimelineLink(urls)
+		}
+	}
+
+	return c.Send(msg, &telebot.SendOptions{
+		ThreadID:  int(topicID),
 		ParseMode: telebot.ModeHTML,
 	})
 }

@@ -25,3 +25,20 @@ func Timeline(inc incident.Incident, events []event.Event) string {
 
 	return b.String()
 }
+
+func TimelineLink(urls []string) string {
+	if len(urls) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString("\n\n📄 <b>Full timeline:</b>")
+	if len(urls) == 1 {
+		fmt.Fprintf(&b, " <a href=\"%s\">Telegraph</a>", escape(urls[0]))
+		return b.String()
+	}
+	for i, u := range urls {
+		fmt.Fprintf(&b, "\n<a href=\"%s\">Part %d</a>", escape(u), i+1)
+	}
+	return b.String()
+}

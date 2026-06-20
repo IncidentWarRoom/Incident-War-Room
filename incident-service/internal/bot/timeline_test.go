@@ -38,6 +38,45 @@ func TestHandleTimelineRepliesInTheTopic(t *testing.T) {
 	}
 }
 
+func TestHandleTimelineLinksTelegraph(t *testing.T) {
+	h := New(&fakeService{
+		timeline: func(int64, int64) (*incident.Incident, []event.Event, error) {
+			return &incident.Incident{Title: "outage"}, []event.Event{
+				{Username: "alice", Message: "looking into it"},
+			}, nil
+		},
+		publish: func(int64, int64) ([]string, error) {
+			return []string{"https://telegra.ph/timeline-1"}, nil
+		},
+	}, newFakeAPI())
+	ctx := &mockContext{}
+
+	if err := h.HandleTimeline(ctx); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	sentContains(t, ctx, "https://telegra.ph/timeline-1")
+}
+
+func TestHandleTimelineEmptyDoesNotPublish(t *testing.T) {
+	published := false
+	h := New(&fakeService{
+		timeline: func(int64, int64) (*incident.Incident, []event.Event, error) {
+			return &incident.Incident{Title: "outage"}, nil, nil
+		},
+		publish: func(int64, int64) ([]string, error) {
+			published = true
+			return nil, nil
+		},
+	}, newFakeAPI())
+
+	if err := h.HandleTimeline(&mockContext{}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if published {
+		t.Fatal("empty timeline should not be published to Telegraph")
+	}
+}
+
 func TestHandleTimelineNoActiveIncident(t *testing.T) {
 	h := New(&fakeService{
 		timeline: func(int64, int64) (*incident.Incident, []event.Event, error) {
