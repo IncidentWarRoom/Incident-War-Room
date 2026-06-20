@@ -1,6 +1,7 @@
 package response
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -49,6 +50,34 @@ func TestTimelineWithEvents(t *testing.T) {
 	}
 	if strings.Contains(got, "timeline is empty") {
 		t.Errorf("Timeline() with events should not show empty notice: %q", got)
+	}
+}
+
+func TestTimelineShowsOnlyLastFive(t *testing.T) {
+	base := time.Date(2026, 6, 13, 10, 0, 0, 0, time.UTC)
+	events := make([]event.Event, 8)
+	for i := range events {
+		events[i] = event.Event{
+			Username:  "alice",
+			Message:   fmt.Sprintf("update-%d", i+1),
+			CreatedAt: base.Add(time.Duration(i) * time.Minute),
+		}
+	}
+
+	got := Timeline(incident.Incident{Title: "outage"}, events)
+
+	for _, want := range []string{"update-4", "update-5", "update-6", "update-7", "update-8"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("Timeline() = %q, missing recent %q", got, want)
+		}
+	}
+	for _, gone := range []string{"update-1", "update-2", "update-3"} {
+		if strings.Contains(got, gone) {
+			t.Errorf("Timeline() = %q, should not show older %q", got, gone)
+		}
+	}
+	if !strings.Contains(got, "last 5 of 8") {
+		t.Errorf("Timeline() = %q, missing truncation notice", got)
 	}
 }
 

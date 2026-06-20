@@ -8,6 +8,8 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 )
 
+const maxInlineEvents = 5
+
 func Timeline(inc incident.Incident, events []event.Event) string {
 	var b strings.Builder
 
@@ -18,7 +20,13 @@ func Timeline(inc incident.Incident, events []event.Event) string {
 		return b.String()
 	}
 
-	for _, e := range events {
+	shown := events
+	if len(events) > maxInlineEvents {
+		shown = events[len(events)-maxInlineEvents:]
+		fmt.Fprintf(&b, "\n<i>Showing the last %d of %d updates.</i>\n", maxInlineEvents, len(events))
+	}
+
+	for _, e := range shown {
 		fmt.Fprintf(&b, "\n<b>%s</b> — %s: %s",
 			formatTime(e.CreatedAt), escape(e.Username), escape(e.Message))
 	}
