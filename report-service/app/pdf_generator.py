@@ -28,9 +28,6 @@ def generate_incident_report(data: ReportRequest) -> bytes:
     if data.incident.severity:
         elements.append(Paragraph(f"Severity: {data.incident.severity}", styles["Normal"]))
 
-    if data.incident.status:
-        elements.append(Paragraph(f"Status: {data.incident.status}", styles["Normal"]))
-
     elements.append(Spacer(1, 12))
 
     elements.append(Paragraph("Participants", styles["Heading2"]))
