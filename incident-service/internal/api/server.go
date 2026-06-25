@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 )
 
@@ -17,6 +19,7 @@ const requestTimeout = 30 * time.Second
 // IncidentService is the subset of the service layer the HTTP API depends on.
 type IncidentService interface {
 	ListIncidents(ctx context.Context) ([]incident.Incident, error)
+	GetIncident(ctx context.Context, id uuid.UUID) (*incident.Incident, error)
 }
 
 type Server struct {
@@ -32,6 +35,7 @@ func NewServer(svc IncidentService, allowedOrigin string) *Server {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/incidents", s.listIncidents)
+	mux.HandleFunc("GET /api/v1/incidents/{id}", s.getIncident)
 
 	return s.cors(mux)
 }
