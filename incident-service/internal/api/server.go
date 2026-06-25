@@ -1,0 +1,66 @@
+// Package api exposes the incident war room over HTTP so the web frontend can
+// read incidents, their timeline and related assets. It is a thin transport
+// layer: handlers translate requests into service calls and render domain
+// models as JSON, leaving all business logic in the service package.
+package api
+
+import (
+	"context"
+	"net/http"
+	"time"
+
+	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
+)
+
+const requestTimeout = 30 * time.Second
+
+// IncidentService is the subset of the service layer the HTTP API depends on.
+type IncidentService interface {
+	ListIncidents(ctx context.Context) ([]incident.Incident, error)
+}
+
+type Server struct {
+	svc           IncidentService
+	allowedOrigin string
+}
+
+func NewServer(svc IncidentService, allowedOrigin string) *Server {
+	return &Server{svc: svc, allowedOrigin: allowedOrigin}
+}
+
+// Handler builds the HTTP router with all routes and middleware applied.
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/v1/incidents", s.listIncidents)
+
+	return s.cors(mux)
+}
+
+// Run starts the HTTP server and blocks until it stops.
+func (s *Server) Run(addr string) error {
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           s.Handler(),
+		ReadHeaderTimeout: requestTimeout,
+	}
+	return srv.ListenAndServe()
+}
+
+func (s *Server) cors(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", s.allowedOrigin)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) context(r *http.Request) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(r.Context(), requestTimeout)
+}

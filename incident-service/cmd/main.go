@@ -8,6 +8,7 @@ import (
 
 	"gopkg.in/telebot.v3"
 
+	"github.com/cQu1x/Incident-War-Room/internal/api"
 	"github.com/cQu1x/Incident-War-Room/internal/bot"
 	"github.com/cQu1x/Incident-War-Room/internal/config"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/media"
@@ -62,6 +63,14 @@ func main() {
 
 	handler := bot.New(svc, tgBot, bot.WithMediaEnabled(cfg.S3Enabled))
 	handler.Register(tgBot)
+
+	apiServer := api.NewServer(svc, cfg.CORSAllowedOrigin)
+	go func() {
+		fmt.Printf("HTTP API listening on %s\n", cfg.HTTPAddr)
+		if err := apiServer.Run(cfg.HTTPAddr); err != nil {
+			log.Fatalf("http api: %v", err)
+		}
+	}()
 
 	fmt.Println("Bot started")
 	tgBot.Start()

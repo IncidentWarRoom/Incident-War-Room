@@ -44,6 +44,14 @@ func (f *fakeIncidents) GetByID(_ context.Context, id uuid.UUID) (*incident.Inci
 	return &clone, nil
 }
 
+func (f *fakeIncidents) List(_ context.Context) ([]incident.Incident, error) {
+	incidents := make([]incident.Incident, 0, len(f.byID))
+	for _, inc := range f.byID {
+		incidents = append(incidents, *inc)
+	}
+	return incidents, nil
+}
+
 func (f *fakeIncidents) GetActiveByTopicID(_ context.Context, chatID, topicID int64) (*incident.Incident, error) {
 	for _, inc := range f.byID {
 		if inc.ChatID == chatID && inc.TopicID == topicID && inc.Status == incident.StatusActive {
