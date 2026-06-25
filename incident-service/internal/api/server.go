@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/cQu1x/Incident-War-Room/internal/domain/event"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 )
 
@@ -20,6 +21,7 @@ const requestTimeout = 30 * time.Second
 type IncidentService interface {
 	ListIncidents(ctx context.Context) ([]incident.Incident, error)
 	GetIncident(ctx context.Context, id uuid.UUID) (*incident.Incident, error)
+	IncidentTimeline(ctx context.Context, id uuid.UUID) ([]event.Event, error)
 }
 
 type Server struct {
@@ -36,6 +38,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/incidents", s.listIncidents)
 	mux.HandleFunc("GET /api/v1/incidents/{id}", s.getIncident)
+	mux.HandleFunc("GET /api/v1/incidents/{id}/timeline", s.incidentTimeline)
 
 	return s.cors(mux)
 }

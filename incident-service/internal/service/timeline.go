@@ -3,10 +3,22 @@ package service
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/cQu1x/Incident-War-Room/internal/domain/event"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/timeline"
 )
+
+// IncidentTimeline returns the events of the incident with the given ID in
+// chronological order. Returns errs.ErrIncidentNotFound if the incident does
+// not exist.
+func (s *Service) IncidentTimeline(ctx context.Context, id uuid.UUID) ([]event.Event, error) {
+	if _, err := s.incidents.GetByID(ctx, id); err != nil {
+		return nil, err
+	}
+	return s.events.ListByIncidentID(ctx, id)
+}
 
 // GetTimeline returns the chat's active incident together with its events in
 // chronological order. Returns errs.ErrNoActiveIncident if the chat has no
