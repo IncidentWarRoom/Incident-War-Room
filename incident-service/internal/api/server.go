@@ -39,6 +39,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/incidents", s.listIncidents)
 	mux.HandleFunc("GET /api/v1/incidents/{id}", s.getIncident)
 	mux.HandleFunc("GET /api/v1/incidents/{id}/timeline", s.incidentTimeline)
+	mux.HandleFunc("GET /api/v1/incidents/{id}/images", s.incidentImages)
 
 	return s.cors(mux)
 }
