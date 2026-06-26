@@ -59,7 +59,7 @@ func (h *Handler) handleSetSeverity(c telebot.Context) error {
 		return c.Send(userError(err))
 	}
 
-	if err := c.Edit(incidentCard(inc.Title, inc.Severity, inc.Status), incidentMenu()); err != nil {
+	if err := c.Edit(incidentCard(inc.Title, inc.Severity, inc.Status, h.mediaEnabled), incidentMenu()); err != nil {
 		return err
 	}
 

@@ -13,6 +13,7 @@ type Event struct {
 	UserID     *int64
 	Username   string
 	Message    string
+	MediaURL   *string
 	CreatedAt  time.Time
 }
 

@@ -23,12 +23,12 @@ func NewEventRepository(db Querier) *EventRepository {
 // by the database and written back into e.
 func (r *EventRepository) Create(ctx context.Context, e *event.Event) error {
 	const query = `
-		INSERT INTO incident_events (incident_id, type, user_id, username, message)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO incident_events (incident_id, type, user_id, username, message, media_url)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, created_at`
 
 	err := r.db.
-		QueryRow(ctx, query, e.IncidentID, e.Type, e.UserID, e.Username, e.Message).
+		QueryRow(ctx, query, e.IncidentID, e.Type, e.UserID, e.Username, e.Message, e.MediaURL).
 		Scan(&e.ID, &e.CreatedAt)
 	if err != nil {
 		return errs.Wrapf(errs.KindInternal, "repository.Event.Create", err, "insert event")
@@ -41,7 +41,7 @@ func (r *EventRepository) Create(ctx context.Context, e *event.Event) error {
 // order — this is the incident timeline.
 func (r *EventRepository) ListByIncidentID(ctx context.Context, incidentID uuid.UUID) ([]event.Event, error) {
 	const query = `
-		SELECT id, incident_id, type, user_id, username, message, created_at
+		SELECT id, incident_id, type, user_id, username, message, media_url, created_at
 		FROM incident_events
 		WHERE incident_id = $1
 		ORDER BY created_at ASC`
@@ -90,6 +90,7 @@ func scanEvent(row pgx.CollectableRow) (event.Event, error) {
 		&e.UserID,
 		&e.Username,
 		&e.Message,
+		&e.MediaURL,
 		&e.CreatedAt,
 	)
 	return e, err

@@ -22,6 +22,14 @@ type Config struct {
 	ReportServiceURL string `env:"REPORT_SERVICE_URL" env-default:"http://localhost:8000"`
 
 	TelegraphAccessToken string `env:"TELEGRAPH_ACCESS_TOKEN"`
+
+	S3Enabled       bool   `env:"S3_ENABLED" env-default:"false"`
+	S3EndpointURL   string `env:"S3_ENDPOINT_URL"`
+	S3Region        string `env:"S3_REGION"`
+	S3Bucket        string `env:"S3_BUCKET_NAME"`
+	S3AccessKey     string `env:"S3_ACCESS_KEY"`
+	S3SecretKey     string `env:"S3_SECRET_KEY"`
+	S3PublicBaseURL string `env:"S3_PUBLIC_BASE_URL"`
 }
 
 func Load() (*Config, error) {
