@@ -50,19 +50,18 @@ func (s *Server) incidentTimeline(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := s.context(r)
 	defer cancel()
 
-	events, err := s.svc.IncidentTimeline(ctx, id)
+	inc, events, err := s.svc.IncidentTimeline(ctx, id)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, newEventResponses(events))
+	writeJSON(w, http.StatusOK, newTimelineResponse(*inc, events))
 }
 
-// incidentImages serves the images attached to an incident. The system does
-// not store incident media yet (the bot rejects it), so this is a placeholder
-// returning an empty list to give the frontend a stable contract. It still
-// validates the id and 404s on unknown incidents.
+// incidentImages serves the images attached to an incident's timeline: every
+// event that carries an uploaded photo, with its caption and author. Returns
+// 404 when the incident does not exist.
 func (s *Server) incidentImages(w http.ResponseWriter, r *http.Request) {
 	id, err := incidentID(r)
 	if err != nil {
@@ -73,12 +72,13 @@ func (s *Server) incidentImages(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := s.context(r)
 	defer cancel()
 
-	if _, err := s.svc.GetIncident(ctx, id); err != nil {
+	images, err := s.svc.IncidentImages(ctx, id)
+	if err != nil {
 		writeError(w, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, []string{})
+	writeJSON(w, http.StatusOK, newImageResponses(images))
 }
 
 func incidentID(r *http.Request) (uuid.UUID, error) {
