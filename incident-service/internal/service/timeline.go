@@ -10,14 +10,21 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/timeline"
 )
 
-// IncidentTimeline returns the events of the incident with the given ID in
-// chronological order. Returns errs.ErrIncidentNotFound if the incident does
-// not exist.
-func (s *Service) IncidentTimeline(ctx context.Context, id uuid.UUID) ([]event.Event, error) {
-	if _, err := s.incidents.GetByID(ctx, id); err != nil {
-		return nil, err
+// IncidentTimeline returns the incident with the given ID together with its
+// events in chronological order. Returns errs.ErrIncidentNotFound if the
+// incident does not exist.
+func (s *Service) IncidentTimeline(ctx context.Context, id uuid.UUID) (*incident.Incident, []event.Event, error) {
+	inc, err := s.incidents.GetByID(ctx, id)
+	if err != nil {
+		return nil, nil, err
 	}
-	return s.events.ListByIncidentID(ctx, id)
+
+	events, err := s.events.ListByIncidentID(ctx, id)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return inc, events, nil
 }
 
 // GetTimeline returns the chat's active incident together with its events in
