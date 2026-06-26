@@ -1,0 +1,326 @@
+openapi: 3.0.3
+
+info:
+  title: Incident War Room Incident Service API
+  description: >
+    Read-only HTTP API that exposes incidents, their timeline and attached
+    images to the web frontend. Served by the Go incident-service alongside the
+    Telegram bot.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local Incident Service
+
+paths:
+  /api/v1/incidents:
+    get:
+      summary: List incidents
+      description: Returns all incidents ordered from newest to oldest.
+      operationId: listIncidents
+      responses:
+        "200":
+          description: List of incidents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Incident"
+
+  /api/v1/incidents/{id}:
+    get:
+      summary: Get incident by ID
+      description: Returns a single incident.
+      operationId: getIncident
+      parameters:
+        - $ref: "#/components/parameters/IncidentId"
+      responses:
+        "200":
+          description: The incident
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Incident"
+        "400":
+          $ref: "#/components/responses/InvalidId"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/incidents/{id}/timeline:
+    get:
+      summary: Get incident timeline
+      description: >
+        Returns the incident header (title, status, severity), its time span and
+        duration (when closed), the list of responder usernames, and the
+        chronological timeline events.
+      operationId: getIncidentTimeline
+      parameters:
+        - $ref: "#/components/parameters/IncidentId"
+      responses:
+        "200":
+          description: The incident timeline
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Timeline"
+        "400":
+          $ref: "#/components/responses/InvalidId"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/incidents/{id}/images:
+    get:
+      summary: Get incident images
+      description: >
+        Returns every timeline event that carries an attached photo, with the
+        caption it was posted with and its author. Empty when the incident has
+        no images.
+      operationId: getIncidentImages
+      parameters:
+        - $ref: "#/components/parameters/IncidentId"
+      responses:
+        "200":
+          description: List of attached images
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Image"
+        "400":
+          $ref: "#/components/responses/InvalidId"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  parameters:
+    IncidentId:
+      name: id
+      in: path
+      required: true
+      description: Incident UUID
+      schema:
+        type: string
+        format: uuid
+      example: "8f1d2c4a-0e3b-4a6f-9b2c-1d2e3f4a5b6c"
+
+  responses:
+    InvalidId:
+      description: Malformed incident id
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "api.incidentID: invalid incident id"
+    NotFound:
+      description: Incident does not exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "incident: incident not found"
+
+  schemas:
+    Incident:
+      type: object
+      required:
+        - id
+        - title
+        - severity
+        - status
+        - chatId
+        - topicId
+        - createdAt
+        - telegraphUrls
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "8f1d2c4a-0e3b-4a6f-9b2c-1d2e3f4a5b6c"
+        title:
+          type: string
+          example: "Payment Service Down"
+        severity:
+          $ref: "#/components/schemas/Severity"
+        status:
+          $ref: "#/components/schemas/Status"
+        chatId:
+          type: integer
+          format: int64
+          description: Telegram chat ID
+          example: -1001234567890
+        topicId:
+          type: integer
+          format: int64
+          description: Telegram forum topic (thread) ID
+          example: 42
+        createdBy:
+          type: integer
+          format: int64
+          nullable: true
+          description: Telegram user ID of the incident opener
+          example: 1
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-06-01T14:03:00Z"
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-06-01T14:18:00Z"
+        telegraphUrls:
+          type: array
+          description: Published Telegraph timeline page URLs
+          items:
+            type: string
+          example: ["https://telegra.ph/incident-06-01"]
+        reportUrl:
+          type: string
+          nullable: true
+          description: Public URL of the generated PDF report
+          example: "https://storage.example.com/reports/15.pdf"
+
+    Timeline:
+      type: object
+      required:
+        - incidentId
+        - title
+        - status
+        - severity
+        - startedAt
+        - responders
+        - events
+      properties:
+        incidentId:
+          type: string
+          format: uuid
+          example: "8f1d2c4a-0e3b-4a6f-9b2c-1d2e3f4a5b6c"
+        title:
+          type: string
+          example: "Payment Service Down"
+        status:
+          $ref: "#/components/schemas/Status"
+        severity:
+          $ref: "#/components/schemas/Severity"
+        startedAt:
+          type: string
+          format: date-time
+          description: Incident creation time
+          example: "2026-06-01T14:03:00Z"
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Incident closing time; null while active
+          example: "2026-06-01T14:18:00Z"
+        durationSeconds:
+          type: integer
+          format: int64
+          nullable: true
+          description: Open-to-closed duration in seconds; null while active
+          example: 900
+        responders:
+          type: array
+          description: Distinct usernames that posted on the timeline, in first-seen order
+          items:
+            type: string
+          example: ["rolan", "bogdan"]
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/Event"
+
+    Event:
+      type: object
+      required:
+        - id
+        - incidentId
+        - type
+        - username
+        - message
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        incidentId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [INCIDENT_CREATED, COMMENT_ADDED, INCIDENT_CLOSED]
+          example: "COMMENT_ADDED"
+        userId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1
+        username:
+          type: string
+          example: "rolan"
+        message:
+          type: string
+          example: "Found connection pool errors"
+        mediaUrl:
+          type: string
+          nullable: true
+          description: Public URL of the photo attached to this event, if any
+          example: "https://storage.example.com/incidents/15/abc.jpg"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-06-01T14:09:00Z"
+
+    Image:
+      type: object
+      required:
+        - eventId
+        - url
+        - username
+        - message
+        - createdAt
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: ID of the timeline event the image is attached to
+        url:
+          type: string
+          description: Public URL of the image
+          example: "https://storage.example.com/incidents/15/abc.jpg"
+        username:
+          type: string
+          description: Author who posted the image
+          example: "rolan"
+        message:
+          type: string
+          description: Caption posted with the image
+          example: "dashboard screenshot"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-06-01T14:09:00Z"
+
+    Severity:
+      type: string
+      enum: [LOW, MEDIUM, HIGH]
+      example: "HIGH"
+
+    Status:
+      type: string
+      enum: [ACTIVE, CLOSED]
+      example: "CLOSED"
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: "incident: incident not found"

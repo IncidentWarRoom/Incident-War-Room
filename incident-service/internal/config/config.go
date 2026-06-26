@@ -30,6 +30,9 @@ type Config struct {
 	S3AccessKey     string `env:"S3_ACCESS_KEY"`
 	S3SecretKey     string `env:"S3_SECRET_KEY"`
 	S3PublicBaseURL string `env:"S3_PUBLIC_BASE_URL"`
+
+	HTTPAddr          string `env:"HTTP_ADDR"           env-default:":8080"`
+	CORSAllowedOrigin string `env:"CORS_ALLOWED_ORIGIN" env-default:"*"`
 }
 
 func Load() (*Config, error) {
