@@ -79,7 +79,7 @@ func (h *Handler) createIncident(c telebot.Context, description string) error {
 
 	if _, err := h.api.Send(
 		chat,
-		incidentCard(inc.Title, inc.Severity, inc.Status),
+		incidentCard(inc.Title, inc.Severity, inc.Status, h.mediaEnabled),
 		&telebot.SendOptions{ThreadID: topic.ThreadID, ReplyMarkup: incidentMenu()},
 	); err != nil {
 		return err

@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 
 	"github.com/cQu1x/Incident-War-Room/internal/domain/event"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
+	"github.com/cQu1x/Incident-War-Room/internal/domain/media"
 )
 
 type mockContext struct {
@@ -76,6 +78,7 @@ func sentContains(t *testing.T, m *mockContext, substr string) {
 type fakeService struct {
 	create   func(chatID, topicID int64, title string, sev incident.Severity, userID *int64, username string) (*incident.Incident, error)
 	addEvent func(chatID, topicID int64, userID *int64, username, message string) (*event.Event, error)
+	addImage func(chatID, topicID int64, userID *int64, username, caption string, img media.Image) (*event.Event, error)
 	closeInc func(chatID, topicID int64, userID *int64, username string) (*incident.Incident, error)
 	setSev   func(chatID, topicID int64, sev incident.Severity) (*incident.Incident, error)
 	timeline func(chatID, topicID int64) (*incident.Incident, []event.Event, error)
@@ -89,6 +92,10 @@ func (f *fakeService) CreateIncident(_ context.Context, chatID, topicID int64, t
 
 func (f *fakeService) AddTimelineEvent(_ context.Context, chatID, topicID int64, userID *int64, username, message string) (*event.Event, error) {
 	return f.addEvent(chatID, topicID, userID, username, message)
+}
+
+func (f *fakeService) AddTimelineEventWithImage(_ context.Context, chatID, topicID int64, userID *int64, username, caption string, img media.Image) (*event.Event, error) {
+	return f.addImage(chatID, topicID, userID, username, caption, img)
 }
 
 func (f *fakeService) CloseIncident(_ context.Context, chatID, topicID int64, userID *int64, username string) (*incident.Incident, error) {
@@ -184,6 +191,14 @@ func (a *fakeAPI) CreateTopic(_ *telebot.Chat, topic *telebot.Topic) (*telebot.T
 func (a *fakeAPI) DeleteTopic(_ *telebot.Chat, topic *telebot.Topic) error {
 	a.deleted = append(a.deleted, topic.ThreadID)
 	return nil
+}
+
+func (a *fakeAPI) FileByID(fileID string) (telebot.File, error) {
+	return telebot.File{FileID: fileID, FilePath: "photos/" + fileID + ".jpg"}, nil
+}
+
+func (a *fakeAPI) File(_ *telebot.File) (io.ReadCloser, error) {
+	return io.NopCloser(strings.NewReader("\xff\xd8\xff\xe0image-bytes")), nil
 }
 
 func apiSentContains(t *testing.T, a *fakeAPI, substr string) {

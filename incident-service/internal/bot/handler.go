@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"errors"
+	"io"
 	"sync"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 
 	"github.com/cQu1x/Incident-War-Room/internal/domain/event"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
+	"github.com/cQu1x/Incident-War-Room/internal/domain/media"
 	"github.com/cQu1x/Incident-War-Room/internal/errs"
 )
 
@@ -18,6 +20,7 @@ const handlerTimeout = 30 * time.Second
 type IncidentService interface {
 	CreateIncident(ctx context.Context, chatID, topicID int64, title string, severity incident.Severity, userID *int64, username string) (*incident.Incident, error)
 	AddTimelineEvent(ctx context.Context, chatID, topicID int64, userID *int64, username, message string) (*event.Event, error)
+	AddTimelineEventWithImage(ctx context.Context, chatID, topicID int64, userID *int64, username, caption string, img media.Image) (*event.Event, error)
 	CloseIncident(ctx context.Context, chatID, topicID int64, userID *int64, username string) (*incident.Incident, error)
 	SetSeverity(ctx context.Context, chatID, topicID int64, severity incident.Severity) (*incident.Incident, error)
 	GetTimeline(ctx context.Context, chatID, topicID int64) (*incident.Incident, []event.Event, error)
@@ -30,6 +33,8 @@ type TelegramAPI interface {
 	Edit(msg telebot.Editable, what interface{}, opts ...interface{}) (*telebot.Message, error)
 	CreateTopic(chat *telebot.Chat, topic *telebot.Topic) (*telebot.Topic, error)
 	DeleteTopic(chat *telebot.Chat, topic *telebot.Topic) error
+	FileByID(fileID string) (telebot.File, error)
+	File(file *telebot.File) (io.ReadCloser, error)
 }
 
 type announceKey struct {
@@ -38,19 +43,33 @@ type announceKey struct {
 }
 
 type Handler struct {
-	svc IncidentService
-	api TelegramAPI
+	svc          IncidentService
+	api          TelegramAPI
+	mediaEnabled bool
 
 	mu            sync.Mutex
 	announcements map[announceKey]telebot.Editable
 }
 
-func New(svc IncidentService, api TelegramAPI) *Handler {
-	return &Handler{
+// Option customizes a Handler.
+type Option func(*Handler)
+
+// WithMediaEnabled toggles image uploads in incident topics. When disabled the
+// bot replies that images are unsupported because S3 storage is not connected.
+func WithMediaEnabled(enabled bool) Option {
+	return func(h *Handler) { h.mediaEnabled = enabled }
+}
+
+func New(svc IncidentService, api TelegramAPI, opts ...Option) *Handler {
+	h := &Handler{
 		svc:           svc,
 		api:           api,
 		announcements: make(map[announceKey]telebot.Editable),
 	}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
 }
 
 func (h *Handler) rememberAnnouncement(chatID, topicID int64, msg telebot.Editable) {
