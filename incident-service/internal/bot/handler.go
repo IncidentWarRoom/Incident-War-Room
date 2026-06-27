@@ -46,6 +46,7 @@ type Handler struct {
 	svc          IncidentService
 	api          TelegramAPI
 	mediaEnabled bool
+	alertChatID  int64
 
 	mu            sync.Mutex
 	announcements map[announceKey]telebot.Editable
@@ -58,6 +59,12 @@ type Option func(*Handler)
 // bot replies that images are unsupported because S3 storage is not connected.
 func WithMediaEnabled(enabled bool) Option {
 	return func(h *Handler) { h.mediaEnabled = enabled }
+}
+
+// WithAlertChat sets the forum supergroup where incidents opened from external
+// monitoring alerts are created. When unset, OpenIncidentFromAlert is rejected.
+func WithAlertChat(chatID int64) Option {
+	return func(h *Handler) { h.alertChatID = chatID }
 }
 
 func New(svc IncidentService, api TelegramAPI, opts ...Option) *Handler {

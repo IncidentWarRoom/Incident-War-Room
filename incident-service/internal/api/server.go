@@ -26,13 +26,21 @@ type IncidentService interface {
 	IncidentImages(ctx context.Context, id uuid.UUID) ([]event.Event, error)
 }
 
+// Route is an additional handler mounted on the server, identified by a
+// net/http ServeMux pattern (e.g. "POST /webhooks/alertmanager").
+type Route struct {
+	Pattern string
+	Handler http.Handler
+}
+
 type Server struct {
 	svc           IncidentService
 	allowedOrigin string
+	routes        []Route
 }
 
-func NewServer(svc IncidentService, allowedOrigin string) *Server {
-	return &Server{svc: svc, allowedOrigin: allowedOrigin}
+func NewServer(svc IncidentService, allowedOrigin string, routes ...Route) *Server {
+	return &Server{svc: svc, allowedOrigin: allowedOrigin, routes: routes}
 }
 
 // Handler builds the HTTP router with all routes and middleware applied.
@@ -43,6 +51,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/incidents/{id}/timeline", metrics.Instrument("/api/v1/incidents/{id}/timeline", s.incidentTimeline))
 	mux.HandleFunc("GET /api/v1/incidents/{id}/images", metrics.Instrument("/api/v1/incidents/{id}/images", s.incidentImages))
 	mux.Handle("GET /metrics", metrics.Handler())
+
+	for _, route := range s.routes {
+		mux.Handle(route.Pattern, route.Handler)
+	}
 
 	return s.cors(mux)
 }
