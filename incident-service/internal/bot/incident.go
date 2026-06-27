@@ -1,6 +1,9 @@
 package bot
 
 import (
+	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -10,7 +13,11 @@ import (
 
 	"github.com/cQu1x/Incident-War-Room/internal/bot/response"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
+	"github.com/cQu1x/Incident-War-Room/internal/domain/report"
+	"github.com/cQu1x/Incident-War-Room/internal/errs"
 )
+
+var errCreateTopic = errors.New("create topic")
 
 const incidentUsage = "Usage:\n/incident create <description> — open a new incident\n/incident close — close the active incident\n/incident <message> — add an update to the timeline"
 
@@ -59,22 +66,41 @@ func (h *Handler) createIncident(c telebot.Context, description string) error {
 	ctx, cancel := reqContext()
 	defer cancel()
 
-	chat := c.Chat()
-
-	topic, err := h.api.CreateTopic(chat, &telebot.Topic{Name: topicName(description)})
-	if err != nil {
-		log.Printf("bot: create topic: %v", err)
+	userID, username := sender(c)
+	_, err := h.openIncident(ctx, c.Chat(), description, "", userID, username)
+	if errors.Is(err, errCreateTopic) {
 		return c.Send(topicForumRequired)
 	}
+	if err != nil {
+		return c.Send(userError(err))
+	}
+	return nil
+}
 
-	userID, username := sender(c)
-	inc, err := h.svc.CreateIncident(ctx, chat.ID, int64(topic.ThreadID), description, "", userID, username)
+// OpenIncidentFromAlert opens an incident in the configured alert chat from an
+// external monitoring alert (e.g. an Alertmanager webhook). It returns
+// errs.KindUnavailable when no alert chat is configured.
+func (h *Handler) OpenIncidentFromAlert(ctx context.Context, title string, severity incident.Severity) (*incident.Incident, error) {
+	if h.alertChatID == 0 {
+		return nil, errs.New(errs.KindUnavailable, "bot.OpenIncidentFromAlert", "alert chat is not configured")
+	}
+	return h.openIncident(ctx, &telebot.Chat{ID: h.alertChatID}, title, severity, nil, "alertmanager")
+}
+
+func (h *Handler) openIncident(ctx context.Context, chat *telebot.Chat, title string, severity incident.Severity, userID *int64, username string) (*incident.Incident, error) {
+	topic, err := h.api.CreateTopic(chat, &telebot.Topic{Name: topicName(title)})
+	if err != nil {
+		log.Printf("bot: create topic: %v", err)
+		return nil, fmt.Errorf("%w: %v", errCreateTopic, err)
+	}
+
+	inc, err := h.svc.CreateIncident(ctx, chat.ID, int64(topic.ThreadID), title, severity, userID, username)
 	if err != nil {
 		log.Printf("bot: create incident: %v", err)
 		if delErr := h.api.DeleteTopic(chat, topic); delErr != nil {
 			log.Printf("bot: delete orphan topic %d: %v", topic.ThreadID, delErr)
 		}
-		return c.Send(userError(err))
+		return nil, err
 	}
 
 	if _, err := h.api.Send(
@@ -82,7 +108,7 @@ func (h *Handler) createIncident(c telebot.Context, description string) error {
 		incidentCard(inc.Title, inc.Severity, inc.Status, h.mediaEnabled),
 		&telebot.SendOptions{ThreadID: topic.ThreadID, ReplyMarkup: incidentMenu()},
 	); err != nil {
-		return err
+		return nil, err
 	}
 
 	announcement, err := h.api.Send(
@@ -91,11 +117,11 @@ func (h *Handler) createIncident(c telebot.Context, description string) error {
 		telebot.ModeHTML,
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	h.rememberAnnouncement(chat.ID, int64(topic.ThreadID), announcement)
-	return nil
+	return inc, nil
 }
 
 func (h *Handler) refreshAnnouncement(c telebot.Context, inc incident.Incident) {
@@ -137,7 +163,7 @@ func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 	topicID := threadID(c)
 	userID, username := sender(c)
 
-	reportURL, reportErr := h.svc.GenerateReport(ctx, chat.ID, topicID)
+	doc, reportErr := h.svc.GenerateReport(ctx, chat.ID, topicID)
 	timelineURLs, pubErr := h.svc.PublishTimeline(ctx, chat.ID, topicID)
 
 	inc, err := h.svc.CloseIncident(ctx, chat.ID, topicID, userID, username)
@@ -153,11 +179,17 @@ func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 
 	if reportErr != nil {
 		log.Printf("bot: generate report: %v", reportErr)
-		reportURL = ""
+		doc = report.Document{}
 	}
 
-	if _, err := h.api.Send(chat, response.IncidentClosed(*inc, timelineURLs, reportURL), telebot.ModeHTML); err != nil {
+	if _, err := h.api.Send(chat, response.IncidentClosed(*inc, timelineURLs, doc), telebot.ModeHTML); err != nil {
 		return inc, err
+	}
+
+	if len(doc.PDF) > 0 {
+		if err := h.sendReportDocument(chat, *inc, doc.PDF); err != nil {
+			log.Printf("bot: send report document: %v", err)
+		}
 	}
 
 	if topicID != 0 {
@@ -168,6 +200,17 @@ func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 
 	h.forgetAnnouncement(chat.ID, topicID)
 	return inc, nil
+}
+
+func (h *Handler) sendReportDocument(chat *telebot.Chat, inc incident.Incident, pdf []byte) error {
+	document := &telebot.Document{
+		File:     telebot.FromReader(bytes.NewReader(pdf)),
+		FileName: fmt.Sprintf("incident-%s.pdf", inc.ID.String()),
+		MIME:     "application/pdf",
+		Caption:  "📄 Incident report",
+	}
+	_, err := h.api.Send(chat, document)
+	return err
 }
 
 func (h *Handler) setSeverity(c telebot.Context, sev incident.Severity) (*incident.Incident, error) {

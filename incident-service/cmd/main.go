@@ -8,6 +8,7 @@ import (
 
 	"gopkg.in/telebot.v3"
 
+	"github.com/cQu1x/Incident-War-Room/internal/alert"
 	"github.com/cQu1x/Incident-War-Room/internal/api"
 	"github.com/cQu1x/Incident-War-Room/internal/bot"
 	"github.com/cQu1x/Incident-War-Room/internal/config"
@@ -36,7 +37,7 @@ func main() {
 	incidents := repository.NewIncidentRepository(pool)
 	events := repository.NewEventRepository(pool)
 	txManager := repository.NewTxManager(pool)
-	reports := reportclient.New(cfg.ReportServiceURL)
+	reports := reportclient.New(cfg.ReportServiceURL, reportclient.WithS3Enabled(cfg.S3Enabled))
 	timelines := telegraphclient.New(telegraphclient.WithAccessToken(cfg.TelegraphAccessToken))
 
 	var images media.Storage
@@ -61,10 +62,14 @@ func main() {
 		log.Fatalf("%v", errs.Wrapf(errs.KindUnavailable, "main", err, "connect to Telegram Bot API"))
 	}
 
-	handler := bot.New(svc, tgBot, bot.WithMediaEnabled(cfg.S3Enabled))
+	handler := bot.New(svc, tgBot, bot.WithMediaEnabled(cfg.S3Enabled), bot.WithAlertChat(cfg.AlertChatID))
 	handler.Register(tgBot)
 
-	apiServer := api.NewServer(svc, cfg.CORSAllowedOrigin)
+	alertWebhook := alert.NewHandler(handler, cfg.AlertmanagerWebhookToken)
+	apiServer := api.NewServer(svc, cfg.CORSAllowedOrigin, api.Route{
+		Pattern: "POST /webhooks/alertmanager",
+		Handler: alertWebhook,
+	})
 	go func() {
 		fmt.Printf("HTTP API listening on %s\n", cfg.HTTPAddr)
 		if err := apiServer.Run(cfg.HTTPAddr); err != nil {

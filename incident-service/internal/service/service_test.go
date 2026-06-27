@@ -151,12 +151,12 @@ type fakeReports struct {
 	err  error
 }
 
-func (f *fakeReports) Generate(_ context.Context, r report.Report) (string, error) {
+func (f *fakeReports) Generate(_ context.Context, r report.Report) (report.Document, error) {
 	f.last = r
 	if f.err != nil {
-		return "", f.err
+		return report.Document{}, f.err
 	}
-	return f.url, nil
+	return report.Document{URL: f.url}, nil
 }
 
 type fakeTimelines struct {

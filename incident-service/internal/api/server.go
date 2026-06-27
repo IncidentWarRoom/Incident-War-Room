@@ -25,13 +25,21 @@ type IncidentService interface {
 	IncidentImages(ctx context.Context, id uuid.UUID) ([]event.Event, error)
 }
 
+// Route is an additional handler mounted on the server, identified by a
+// net/http ServeMux pattern (e.g. "POST /webhooks/alertmanager").
+type Route struct {
+	Pattern string
+	Handler http.Handler
+}
+
 type Server struct {
 	svc           IncidentService
 	allowedOrigin string
+	routes        []Route
 }
 
-func NewServer(svc IncidentService, allowedOrigin string) *Server {
-	return &Server{svc: svc, allowedOrigin: allowedOrigin}
+func NewServer(svc IncidentService, allowedOrigin string, routes ...Route) *Server {
+	return &Server{svc: svc, allowedOrigin: allowedOrigin, routes: routes}
 }
 
 // Handler builds the HTTP router with all routes and middleware applied.
@@ -41,6 +49,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/incidents/{id}", s.getIncident)
 	mux.HandleFunc("GET /api/v1/incidents/{id}/timeline", s.incidentTimeline)
 	mux.HandleFunc("GET /api/v1/incidents/{id}/images", s.incidentImages)
+
+	for _, route := range s.routes {
+		mux.Handle(route.Pattern, route.Handler)
+	}
 
 	return s.cors(mux)
 }
@@ -58,7 +70,7 @@ func (s *Server) Run(addr string) error {
 func (s *Server) cors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", s.allowedOrigin)
-		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 		if r.Method == http.MethodOptions {
