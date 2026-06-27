@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  go:
+    name: incident-service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: incident-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: incident-service/go.mod
+          cache-dependency-path: incident-service/go.sum
+
+      - name: gofmt
+        run: test -z "$(gofmt -l ./internal/ ./cmd/)"
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test
+        run: go test ./...
