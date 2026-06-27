@@ -60,6 +60,34 @@ func TestBuildPagesKeepsLongEventOnItsOwnPage(t *testing.T) {
 	}
 }
 
+func TestBuildPagesRendersEventImage(t *testing.T) {
+	url := "https://example.com/photo.jpg"
+	events := []event.Event{{Username: "alice", Message: "see attached", MediaURL: &url, CreatedAt: time.Now()}}
+
+	pages := buildPages(incident.Incident{Title: "outage"}, events, maxContentBytes)
+
+	raw, _ := json.Marshal(pages[0].content)
+	s := string(raw)
+	if !strings.Contains(s, `"tag":"img"`) {
+		t.Errorf("expected an img node, got %s", s)
+	}
+	if !strings.Contains(s, url) {
+		t.Errorf("img node missing media url: %s", s)
+	}
+}
+
+func TestBuildPagesSkipsEmptyMediaURL(t *testing.T) {
+	empty := ""
+	events := []event.Event{{Username: "alice", Message: "no photo", MediaURL: &empty, CreatedAt: time.Now()}}
+
+	pages := buildPages(incident.Incident{Title: "outage"}, events, maxContentBytes)
+
+	raw, _ := json.Marshal(pages[0].content)
+	if strings.Contains(string(raw), `"tag":"img"`) {
+		t.Errorf("expected no img node for empty media url: %s", raw)
+	}
+}
+
 func TestPaginateAddsNavLinks(t *testing.T) {
 	content := []any{element("p", text("body"))}
 	urls := []string{"https://telegra.ph/a", "https://telegra.ph/b", "https://telegra.ph/c"}
