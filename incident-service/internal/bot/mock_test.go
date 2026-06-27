@@ -12,6 +12,7 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/event"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/media"
+	"github.com/cQu1x/Incident-War-Room/internal/domain/report"
 )
 
 type mockContext struct {
@@ -83,7 +84,7 @@ type fakeService struct {
 	setSev   func(chatID, topicID int64, sev incident.Severity) (*incident.Incident, error)
 	timeline func(chatID, topicID int64) (*incident.Incident, []event.Event, error)
 	publish  func(chatID, topicID int64) ([]string, error)
-	report   func(chatID, topicID int64) (string, error)
+	report   func(chatID, topicID int64) (report.Document, error)
 }
 
 func (f *fakeService) CreateIncident(_ context.Context, chatID, topicID int64, title string, sev incident.Severity, userID *int64, username string) (*incident.Incident, error) {
@@ -117,7 +118,7 @@ func (f *fakeService) PublishTimeline(_ context.Context, chatID, topicID int64) 
 	return f.publish(chatID, topicID)
 }
 
-func (f *fakeService) GenerateReport(_ context.Context, chatID, topicID int64) (string, error) {
+func (f *fakeService) GenerateReport(_ context.Context, chatID, topicID int64) (report.Document, error) {
 	return f.report(chatID, topicID)
 }
 

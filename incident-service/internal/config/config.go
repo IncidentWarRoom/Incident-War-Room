@@ -33,6 +33,9 @@ type Config struct {
 
 	HTTPAddr          string `env:"HTTP_ADDR"           env-default:":8080"`
 	CORSAllowedOrigin string `env:"CORS_ALLOWED_ORIGIN" env-default:"*"`
+
+	AlertChatID              int64  `env:"ALERT_CHAT_ID"`
+	AlertmanagerWebhookToken string `env:"ALERTMANAGER_WEBHOOK_TOKEN"`
 }
 
 func Load() (*Config, error) {

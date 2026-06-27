@@ -7,27 +7,29 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/report"
 )
 
-func (s *Service) GenerateReport(ctx context.Context, chatID, topicID int64) (string, error) {
+func (s *Service) GenerateReport(ctx context.Context, chatID, topicID int64) (report.Document, error) {
 	inc, events, err := s.GetTimeline(ctx, chatID, topicID)
 	if err != nil {
-		return "", err
+		return report.Document{}, err
 	}
 
-	url, err := s.reports.Generate(ctx, report.Report{
+	doc, err := s.reports.Generate(ctx, report.Report{
 		Incident:     *inc,
 		Participants: participantsFromEvents(events),
 		Timeline:     events,
 	})
 	if err != nil {
-		return "", err
+		return report.Document{}, err
 	}
 
-	if err := s.incidents.UpdateReportURL(ctx, inc.ID, url); err != nil {
-		return "", err
+	if doc.URL != "" {
+		if err := s.incidents.UpdateReportURL(ctx, inc.ID, doc.URL); err != nil {
+			return report.Document{}, err
+		}
+		inc.ReportURL = &doc.URL
 	}
-	inc.ReportURL = &url
 
-	return url, nil
+	return doc, nil
 }
 
 // participantsFromEvents returns the distinct users of the events, preserving

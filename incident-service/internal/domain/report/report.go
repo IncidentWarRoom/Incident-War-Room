@@ -26,6 +26,11 @@ type Report struct {
 	Timeline     []event.Event
 }
 
+type Document struct {
+	URL string
+	PDF []byte
+}
+
 type Generator interface {
-	Generate(ctx context.Context, r Report) (string, error)
+	Generate(ctx context.Context, r Report) (Document, error)
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/cQu1x/Incident-War-Room/internal/domain/event"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
+	"github.com/cQu1x/Incident-War-Room/internal/domain/report"
 	"github.com/cQu1x/Incident-War-Room/internal/errs"
 )
 
@@ -194,7 +195,7 @@ func TestHandleIncidentCloseSendsSummaryAndReportToGeneralAndDeletesTopic(t *tes
 	now := time.Now()
 	api := newFakeAPI()
 	h := New(&fakeService{
-		report: func(int64, int64) (string, error) { return "https://reports.example/r/abc.pdf", nil },
+		report: func(int64, int64) (report.Document, error) { return report.Document{URL: "https://reports.example/r/abc.pdf"}, nil },
 		closeInc: func(int64, int64, *int64, string) (*incident.Incident, error) {
 			return &incident.Incident{Title: "outage", CreatedAt: now, ClosedAt: &now}, nil
 		},
@@ -220,7 +221,7 @@ func TestHandleIncidentCloseLinksTelegraphTimeline(t *testing.T) {
 	now := time.Now()
 	api := newFakeAPI()
 	h := New(&fakeService{
-		report: func(int64, int64) (string, error) { return "https://reports.example/r/abc.pdf", nil },
+		report: func(int64, int64) (report.Document, error) { return report.Document{URL: "https://reports.example/r/abc.pdf"}, nil },
 		publish: func(int64, int64) ([]string, error) {
 			return []string{"https://telegra.ph/timeline-1"}, nil
 		},
@@ -239,7 +240,7 @@ func TestHandleIncidentCloseStillClosesWhenReportFails(t *testing.T) {
 	now := time.Now()
 	api := newFakeAPI()
 	h := New(&fakeService{
-		report: func(int64, int64) (string, error) { return "", errs.New(errs.KindUnavailable, "report", "down") },
+		report: func(int64, int64) (report.Document, error) { return report.Document{}, errs.New(errs.KindUnavailable, "report", "down") },
 		closeInc: func(int64, int64, *int64, string) (*incident.Incident, error) {
 			return &incident.Incident{Title: "outage", CreatedAt: now, ClosedAt: &now}, nil
 		},
@@ -259,7 +260,7 @@ func TestHandleIncidentCloseStillClosesWhenReportFails(t *testing.T) {
 func TestHandleIncidentCloseReportsNoActive(t *testing.T) {
 	api := newFakeAPI()
 	h := New(&fakeService{
-		report:   func(int64, int64) (string, error) { return "", errs.ErrNoActiveIncident },
+		report:   func(int64, int64) (report.Document, error) { return report.Document{}, errs.ErrNoActiveIncident },
 		closeInc: func(int64, int64, *int64, string) (*incident.Incident, error) { return nil, errs.ErrNoActiveIncident },
 	}, api)
 	ctx := &mockContext{args: []string{"close"}, threadID: 5}

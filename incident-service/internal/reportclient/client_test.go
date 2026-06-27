@@ -51,15 +51,18 @@ func TestGenerateSendsContractAndReturnsURL(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	url, err := New(srv.URL).Generate(context.Background(), sampleReport())
+	doc, err := New(srv.URL, WithS3Enabled(true)).Generate(context.Background(), sampleReport())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if url != wantURL {
-		t.Fatalf("unexpected report url: %q", url)
+	if doc.URL != wantURL {
+		t.Fatalf("unexpected report url: %q", doc.URL)
 	}
-	if gotPath != generatePath {
-		t.Fatalf("expected path %q, got %q", generatePath, gotPath)
+	if len(doc.PDF) != 0 {
+		t.Fatalf("expected no PDF bytes in url mode, got %d", len(doc.PDF))
+	}
+	if gotPath != generateURLPath {
+		t.Fatalf("expected path %q, got %q", generateURLPath, gotPath)
 	}
 
 	var decoded map[string]any
@@ -79,6 +82,31 @@ func TestGenerateSendsContractAndReturnsURL(t *testing.T) {
 	parts := decoded["participants"].([]any)
 	if len(parts) != 1 || parts[0].(map[string]any)["userId"].(float64) != 1 {
 		t.Fatalf("unexpected participants: %v", parts)
+	}
+}
+
+func TestGenerateInlineReturnsPDFBytes(t *testing.T) {
+	wantPDF := []byte("%PDF-1.4 inline bytes")
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/pdf")
+		_, _ = w.Write(wantPDF)
+	}))
+	defer srv.Close()
+
+	doc, err := New(srv.URL).Generate(context.Background(), sampleReport())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if string(doc.PDF) != string(wantPDF) {
+		t.Fatalf("unexpected pdf bytes: %q", doc.PDF)
+	}
+	if doc.URL != "" {
+		t.Fatalf("expected no url in inline mode, got %q", doc.URL)
+	}
+	if gotPath != generateInlinePath {
+		t.Fatalf("expected path %q, got %q", generateInlinePath, gotPath)
 	}
 }
 
