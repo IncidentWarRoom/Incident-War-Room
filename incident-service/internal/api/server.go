@@ -13,6 +13,7 @@ import (
 
 	"github.com/cQu1x/Incident-War-Room/internal/domain/event"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
+	"github.com/cQu1x/Incident-War-Room/internal/metrics"
 )
 
 const requestTimeout = 30 * time.Second
@@ -37,10 +38,11 @@ func NewServer(svc IncidentService, allowedOrigin string) *Server {
 // Handler builds the HTTP router with all routes and middleware applied.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/v1/incidents", s.listIncidents)
-	mux.HandleFunc("GET /api/v1/incidents/{id}", s.getIncident)
-	mux.HandleFunc("GET /api/v1/incidents/{id}/timeline", s.incidentTimeline)
-	mux.HandleFunc("GET /api/v1/incidents/{id}/images", s.incidentImages)
+	mux.HandleFunc("GET /api/v1/incidents", metrics.Instrument("/api/v1/incidents", s.listIncidents))
+	mux.HandleFunc("GET /api/v1/incidents/{id}", metrics.Instrument("/api/v1/incidents/{id}", s.getIncident))
+	mux.HandleFunc("GET /api/v1/incidents/{id}/timeline", metrics.Instrument("/api/v1/incidents/{id}/timeline", s.incidentTimeline))
+	mux.HandleFunc("GET /api/v1/incidents/{id}/images", metrics.Instrument("/api/v1/incidents/{id}/images", s.incidentImages))
+	mux.Handle("GET /metrics", metrics.Handler())
 
 	return s.cors(mux)
 }

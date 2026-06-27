@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Response
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from .schemas import ReportRequest, ReportResponse
 from .pdf_generator import generate_incident_report
@@ -16,6 +17,8 @@ app = FastAPI(
     description="Service for generating PDF incident reports",
     version="1.0.0",
 )
+
+Instrumentator().instrument(app).expose(app)
 
 
 REQUIRED_S3_ENV_VARS = [

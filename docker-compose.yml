@@ -26,6 +26,18 @@ services:
       timeout: 5s
       retries: 10
 
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - incident-service
+      - report-service
+
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
@@ -49,3 +61,4 @@ services:
 
 volumes:
   postgres_data:
+  prometheus_data:
