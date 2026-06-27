@@ -23,6 +23,7 @@ type node struct {
 
 type attrs struct {
 	Href string `json:"href,omitempty"`
+	Src  string `json:"src,omitempty"`
 }
 
 type page struct {
@@ -44,12 +45,12 @@ func buildPages(inc incident.Incident, events []event.Event, maxBytes int) []pag
 	}
 
 	for _, e := range events {
-		n := eventNode(e)
-		ns := nodeSize(n)
+		nodes := eventNodes(e)
+		ns := nodesSize(nodes)
 		if len(content) > len(header) && size+ns > maxBytes {
 			flush()
 		}
-		content = append(content, n)
+		content = append(content, nodes...)
 		size += ns
 	}
 	pages = append(pages, page{content: content})
@@ -115,7 +116,7 @@ func headerNodes(inc incident.Incident) []any {
 	}
 }
 
-func eventNode(e event.Event) node {
+func eventNodes(e event.Event) []any {
 	who := e.Username
 	if who == "" {
 		who = "system"
@@ -129,7 +130,16 @@ func eventNode(e event.Event) node {
 		children = append(children, text(": "+e.Message))
 	}
 
-	return node{Tag: "p", Children: children}
+	nodes := []any{node{Tag: "p", Children: children}}
+	if e.MediaURL != nil && *e.MediaURL != "" {
+		nodes = append(nodes, imageNode(*e.MediaURL))
+	}
+	return nodes
+}
+
+func imageNode(src string) node {
+	img := node{Tag: "img", Attrs: &attrs{Src: src}}
+	return node{Tag: "figure", Children: []any{img}}
 }
 
 func element(tag string, children ...any) node {
@@ -146,14 +156,6 @@ func truncate(s string, limit int) string {
 		return s
 	}
 	return string(r[:limit])
-}
-
-func nodeSize(n node) int {
-	b, err := json.Marshal(n)
-	if err != nil {
-		return 0
-	}
-	return len(b)
 }
 
 func nodesSize(nodes []any) int {
