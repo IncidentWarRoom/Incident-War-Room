@@ -26,8 +26,6 @@ type IncidentService interface {
 	IncidentImages(ctx context.Context, id uuid.UUID) ([]event.Event, error)
 }
 
-// Route is an additional handler mounted on the server, identified by a
-// net/http ServeMux pattern (e.g. "POST /webhooks/alertmanager").
 type Route struct {
 	Pattern string
 	Handler http.Handler

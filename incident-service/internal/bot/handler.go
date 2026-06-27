@@ -61,8 +61,6 @@ func WithMediaEnabled(enabled bool) Option {
 	return func(h *Handler) { h.mediaEnabled = enabled }
 }
 
-// WithAlertChat sets the forum supergroup where incidents opened from external
-// monitoring alerts are created. When unset, OpenIncidentFromAlert is rejected.
 func WithAlertChat(chatID int64) Option {
 	return func(h *Handler) { h.alertChatID = chatID }
 }

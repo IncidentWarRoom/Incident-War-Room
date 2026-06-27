@@ -1,5 +1,3 @@
-// Package metrics exposes Prometheus instrumentation for the HTTP API so an
-// external Prometheus can scrape request volume, latency and Go runtime stats.
 package metrics
 
 import (
@@ -25,13 +23,10 @@ var (
 	}, []string{"method", "route"})
 )
 
-// Handler serves the Prometheus exposition format at /metrics.
 func Handler() http.Handler {
 	return promhttp.Handler()
 }
 
-// Instrument wraps a handler so each request updates the request counter and
-// latency histogram, labelled by the matched route pattern.
 func Instrument(route string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}

@@ -75,9 +75,6 @@ func (h *Handler) createIncident(c telebot.Context, description string) error {
 	return nil
 }
 
-// OpenIncidentFromAlert opens an incident in the configured alert chat from an
-// external monitoring alert (e.g. an Alertmanager webhook). It returns
-// errs.KindUnavailable when no alert chat is configured.
 func (h *Handler) OpenIncidentFromAlert(ctx context.Context, title string, severity incident.Severity) (*incident.Incident, error) {
 	if h.alertChatID == 0 {
 		return nil, errs.New(errs.KindUnavailable, "bot.OpenIncidentFromAlert", "alert chat is not configured")
@@ -166,8 +163,6 @@ func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 	return inc, nil
 }
 
-// CloseIncidentFromAlert closes the incident bound to the given chat and topic
-// when its originating monitoring alert resolves.
 func (h *Handler) CloseIncidentFromAlert(ctx context.Context, chatID, topicID int64) error {
 	_, err := h.closeIncidentAt(ctx, &telebot.Chat{ID: chatID}, topicID, nil, "alertmanager")
 	return err

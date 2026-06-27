@@ -1,6 +1,3 @@
-// Package alert receives Alertmanager webhook notifications from an existing
-// Prometheus deployment, opening incidents in the war room for firing alerts
-// and closing them again once the alerts resolve.
 package alert
 
 import (
@@ -15,15 +12,11 @@ import (
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
 )
 
-// Incidents opens and closes incidents in response to monitoring alerts. It is
-// implemented by the bot handler.
 type Incidents interface {
 	OpenIncidentFromAlert(ctx context.Context, title string, severity incident.Severity) (*incident.Incident, error)
 	CloseIncidentFromAlert(ctx context.Context, chatID, topicID int64) error
 }
 
-// Payload is the subset of the Alertmanager webhook body (schema version 4)
-// that we consume.
 type Payload struct {
 	Alerts []Alert `json:"alerts"`
 }
@@ -40,12 +33,6 @@ type incidentRef struct {
 	topicID int64
 }
 
-// Handler exposes an HTTP endpoint that Alertmanager posts to. When token is
-// non-empty, requests must carry a matching Bearer Authorization header.
-//
-// It tracks which incident each firing alert opened so the matching resolved
-// notification can close it again. The mapping is kept in memory and is
-// rebuilt as new alerts arrive.
 type Handler struct {
 	incidents Incidents
 	token     string
@@ -148,8 +135,6 @@ func severity(a Alert) incident.Severity {
 	}
 }
 
-// alertKey identifies an alert across its firing and resolved notifications. It
-// prefers the Alertmanager fingerprint and falls back to the label set.
 func alertKey(a Alert) string {
 	if a.Fingerprint != "" {
 		return a.Fingerprint
