@@ -2,7 +2,7 @@ receivers:
   - name: incident-war-room
     webhook_configs:
       - url: http://incident-service:8080/webhooks/alertmanager
-        send_resolved: false
+        send_resolved: true
         http_config:
           authorization:
             type: Bearer

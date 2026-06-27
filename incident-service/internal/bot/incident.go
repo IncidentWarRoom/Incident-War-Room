@@ -157,17 +157,29 @@ func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 	ctx, cancel := reqContext()
 	defer cancel()
 
-	chat := c.Chat()
-	topicID := threadID(c)
 	userID, username := sender(c)
+	inc, err := h.closeIncidentAt(ctx, c.Chat(), threadID(c), userID, username)
+	if err != nil {
+		log.Printf("bot: close incident: %v", err)
+		return nil, c.Send(userError(err))
+	}
+	return inc, nil
+}
 
+// CloseIncidentFromAlert closes the incident bound to the given chat and topic
+// when its originating monitoring alert resolves.
+func (h *Handler) CloseIncidentFromAlert(ctx context.Context, chatID, topicID int64) error {
+	_, err := h.closeIncidentAt(ctx, &telebot.Chat{ID: chatID}, topicID, nil, "alertmanager")
+	return err
+}
+
+func (h *Handler) closeIncidentAt(ctx context.Context, chat *telebot.Chat, topicID int64, userID *int64, username string) (*incident.Incident, error) {
 	reportURL, reportErr := h.svc.GenerateReport(ctx, chat.ID, topicID)
 	timelineURLs, pubErr := h.svc.PublishTimeline(ctx, chat.ID, topicID)
 
 	inc, err := h.svc.CloseIncident(ctx, chat.ID, topicID, userID, username)
 	if err != nil {
-		log.Printf("bot: close incident: %v", err)
-		return nil, c.Send(userError(err))
+		return nil, err
 	}
 
 	if pubErr != nil {
@@ -181,7 +193,7 @@ func (h *Handler) closeIncident(c telebot.Context) (*incident.Incident, error) {
 	}
 
 	if _, err := h.api.Send(chat, response.IncidentClosed(*inc, timelineURLs, reportURL), telebot.ModeHTML); err != nil {
-		return inc, err
+		log.Printf("bot: send incident closed: %v", err)
 	}
 
 	if topicID != 0 {
