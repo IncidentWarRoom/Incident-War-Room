@@ -72,6 +72,33 @@ func (r *IncidentRepository) GetByID(ctx context.Context, id uuid.UUID) (*incide
 	return inc, nil
 }
 
+// List returns all incidents ordered from newest to oldest by creation time.
+func (r *IncidentRepository) List(ctx context.Context) ([]incident.Incident, error) {
+	const op = "repository.Incident.List"
+	const query = `
+		SELECT id, title, severity, status, chat_id, topic_id, created_by, created_at, closed_at, telegraph_urls, report_url
+		FROM incidents
+		ORDER BY created_at DESC`
+
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, errs.Wrapf(errs.KindInternal, op, err, "select incidents")
+	}
+
+	incidents, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (incident.Incident, error) {
+		inc, err := scanIncident(row)
+		if err != nil {
+			return incident.Incident{}, err
+		}
+		return *inc, nil
+	})
+	if err != nil {
+		return nil, errs.Wrapf(errs.KindInternal, op, err, "scan incidents")
+	}
+
+	return incidents, nil
+}
+
 func (r *IncidentRepository) GetActiveByTopicID(ctx context.Context, chatID, topicID int64) (*incident.Incident, error) {
 	const op = "repository.Incident.GetActiveByTopicID"
 	const query = `

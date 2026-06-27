@@ -9,6 +9,7 @@ import (
 
 	"github.com/cQu1x/Incident-War-Room/internal/domain/event"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
+	"github.com/cQu1x/Incident-War-Room/internal/domain/media"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/report"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/timeline"
 	"github.com/cQu1x/Incident-War-Room/internal/errs"
@@ -41,6 +42,14 @@ func (f *fakeIncidents) GetByID(_ context.Context, id uuid.UUID) (*incident.Inci
 	}
 	clone := *inc
 	return &clone, nil
+}
+
+func (f *fakeIncidents) List(_ context.Context) ([]incident.Incident, error) {
+	incidents := make([]incident.Incident, 0, len(f.byID))
+	for _, inc := range f.byID {
+		incidents = append(incidents, *inc)
+	}
+	return incidents, nil
 }
 
 func (f *fakeIncidents) GetActiveByTopicID(_ context.Context, chatID, topicID int64) (*incident.Incident, error) {
@@ -164,10 +173,26 @@ func (f *fakeTimelines) Publish(_ context.Context, t timeline.Timeline) ([]strin
 	return f.urls, nil
 }
 
+type fakeMedia struct {
+	lastKey string
+	lastImg media.Image
+	url     string
+	err     error
+}
+
+func (f *fakeMedia) Upload(_ context.Context, key string, img media.Image) (string, error) {
+	f.lastKey = key
+	f.lastImg = img
+	if f.err != nil {
+		return "", f.err
+	}
+	return f.url, nil
+}
+
 func newTestService() (*Service, *fakeIncidents, *fakeEvents) {
 	incidents := newFakeIncidents()
 	events := newFakeEvents()
-	svc := New(incidents, events, fakeTx{incidents: incidents, events: events}, &fakeReports{}, &fakeTimelines{})
+	svc := New(incidents, events, fakeTx{incidents: incidents, events: events}, &fakeReports{}, &fakeTimelines{}, nil)
 	return svc, incidents, events
 }
 
@@ -269,6 +294,57 @@ func TestAddTimelineEvent(t *testing.T) {
 	})
 }
 
+func TestAddTimelineEventWithImage(t *testing.T) {
+	ctx := context.Background()
+
+	newImageService := func(m media.Storage) (*Service, *fakeIncidents, *fakeEvents) {
+		incidents := newFakeIncidents()
+		events := newFakeEvents()
+		svc := New(incidents, events, fakeTx{incidents: incidents, events: events}, &fakeReports{}, &fakeTimelines{}, m)
+		return svc, incidents, events
+	}
+
+	t.Run("uploads image and stores its url on the event", func(t *testing.T) {
+		store := &fakeMedia{url: "https://cdn.example/incidents/pic.jpg"}
+		svc, _, events := newImageService(store)
+		inc, _ := svc.CreateIncident(ctx, 500, 500, "outage", incident.SeverityHigh, nil, "alice")
+
+		e, err := svc.AddTimelineEventWithImage(ctx, 500, 500, ptrInt64(3), "bob", "screenshot", media.Image{Data: []byte("x"), ContentType: "image/jpeg", Ext: "jpg"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if e.MediaURL == nil || *e.MediaURL != store.url {
+			t.Fatalf("expected media url %q, got %v", store.url, e.MediaURL)
+		}
+		if e.Message != "screenshot" {
+			t.Fatalf("expected caption stored as message, got %q", e.Message)
+		}
+		stored := events.byIncident[inc.ID]
+		if len(stored) != 2 || stored[1].MediaURL == nil {
+			t.Fatalf("expected comment event with media url, got %+v", stored)
+		}
+	})
+
+	t.Run("no media storage is unavailable", func(t *testing.T) {
+		svc, _, _ := newImageService(nil)
+		_, _ = svc.CreateIncident(ctx, 501, 501, "outage", incident.SeverityHigh, nil, "alice")
+
+		_, err := svc.AddTimelineEventWithImage(ctx, 501, 501, nil, "bob", "", media.Image{Ext: "jpg"})
+		if errs.KindOf(err) != errs.KindUnavailable {
+			t.Fatalf("expected unavailable, got %v", err)
+		}
+	})
+
+	t.Run("no active incident", func(t *testing.T) {
+		svc, _, _ := newImageService(&fakeMedia{url: "https://cdn.example/x.jpg"})
+
+		_, err := svc.AddTimelineEventWithImage(ctx, 502, 502, nil, "bob", "", media.Image{Ext: "jpg"})
+		if errs.KindOf(err) != errs.KindNotFound {
+			t.Fatalf("expected not-found, got %v", err)
+		}
+	})
+}
+
 func TestGetTimeline(t *testing.T) {
 	ctx := context.Background()
 
@@ -309,7 +385,7 @@ func TestPublishTimeline(t *testing.T) {
 		incidents := newFakeIncidents()
 		events := newFakeEvents()
 		publisher := &fakeTimelines{urls: []string{"https://telegra.ph/timeline-1"}}
-		svc := New(incidents, events, fakeTx{incidents: incidents, events: events}, &fakeReports{}, publisher)
+		svc := New(incidents, events, fakeTx{incidents: incidents, events: events}, &fakeReports{}, publisher, nil)
 
 		inc, _ := svc.CreateIncident(ctx, 600, 600, "outage", incident.SeverityHigh, ptrInt64(1), "alice")
 		_, _ = svc.AddTimelineEvent(ctx, 600, 600, ptrInt64(1), "alice", "looking into it")

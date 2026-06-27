@@ -8,9 +8,12 @@ import (
 
 	"gopkg.in/telebot.v3"
 
+	"github.com/cQu1x/Incident-War-Room/internal/api"
 	"github.com/cQu1x/Incident-War-Room/internal/bot"
 	"github.com/cQu1x/Incident-War-Room/internal/config"
+	"github.com/cQu1x/Incident-War-Room/internal/domain/media"
 	"github.com/cQu1x/Incident-War-Room/internal/errs"
+	"github.com/cQu1x/Incident-War-Room/internal/mediastore"
 	"github.com/cQu1x/Incident-War-Room/internal/reportclient"
 	"github.com/cQu1x/Incident-War-Room/internal/repository"
 	"github.com/cQu1x/Incident-War-Room/internal/service"
@@ -36,7 +39,19 @@ func main() {
 	reports := reportclient.New(cfg.ReportServiceURL)
 	timelines := telegraphclient.New(telegraphclient.WithAccessToken(cfg.TelegraphAccessToken))
 
-	svc := service.New(incidents, events, txManager, reports, timelines)
+	var images media.Storage
+	if cfg.S3Enabled {
+		images = mediastore.New(mediastore.Config{
+			EndpointURL:   cfg.S3EndpointURL,
+			Region:        cfg.S3Region,
+			Bucket:        cfg.S3Bucket,
+			AccessKey:     cfg.S3AccessKey,
+			SecretKey:     cfg.S3SecretKey,
+			PublicBaseURL: cfg.S3PublicBaseURL,
+		})
+	}
+
+	svc := service.New(incidents, events, txManager, reports, timelines, images)
 
 	tgBot, err := telebot.NewBot(telebot.Settings{
 		Token:  cfg.BotToken,
@@ -46,8 +61,16 @@ func main() {
 		log.Fatalf("%v", errs.Wrapf(errs.KindUnavailable, "main", err, "connect to Telegram Bot API"))
 	}
 
-	handler := bot.New(svc, tgBot)
+	handler := bot.New(svc, tgBot, bot.WithMediaEnabled(cfg.S3Enabled))
 	handler.Register(tgBot)
+
+	apiServer := api.NewServer(svc, cfg.CORSAllowedOrigin)
+	go func() {
+		fmt.Printf("HTTP API listening on %s\n", cfg.HTTPAddr)
+		if err := apiServer.Run(cfg.HTTPAddr); err != nil {
+			log.Fatalf("http api: %v", err)
+		}
+	}()
 
 	fmt.Println("Bot started")
 	tgBot.Start()

@@ -2,10 +2,14 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
+
+	"github.com/google/uuid"
 
 	"github.com/cQu1x/Incident-War-Room/internal/domain/event"
 	"github.com/cQu1x/Incident-War-Room/internal/domain/incident"
+	"github.com/cQu1x/Incident-War-Room/internal/domain/media"
 	"github.com/cQu1x/Incident-War-Room/internal/errs"
 )
 
@@ -97,6 +101,54 @@ func (s *Service) AddTimelineEvent(
 		UserID:     userID,
 		Username:   username,
 		Message:    message,
+	}
+	if err := s.events.Create(ctx, e); err != nil {
+		return nil, err
+	}
+
+	return e, nil
+}
+
+// AddTimelineEventWithImage appends a comment carrying a single image to the
+// chat's active incident timeline. The image is uploaded to media storage and
+// its public URL is stored on the event as MediaURL, alongside the (possibly
+// empty) caption.
+//
+// Returns errs.ErrNoActiveIncident if the chat has no active incident, or an
+// errs.KindUnavailable error if media storage is not configured.
+func (s *Service) AddTimelineEventWithImage(
+	ctx context.Context,
+	chatID int64,
+	topicID int64,
+	userID *int64,
+	username string,
+	caption string,
+	img media.Image,
+) (*event.Event, error) {
+	const op = "service.AddTimelineEventWithImage"
+
+	if s.media == nil {
+		return nil, errs.New(errs.KindUnavailable, op, "media storage is not configured")
+	}
+
+	active, err := s.incidents.GetActiveByTopicID(ctx, chatID, topicID)
+	if err != nil {
+		return nil, err
+	}
+
+	key := fmt.Sprintf("incidents/%s/%s.%s", active.ID, uuid.New(), img.Ext)
+	url, err := s.media.Upload(ctx, key, img)
+	if err != nil {
+		return nil, err
+	}
+
+	e := &event.Event{
+		IncidentID: active.ID,
+		Type:       event.TypeCommentAdded,
+		UserID:     userID,
+		Username:   username,
+		Message:    strings.TrimSpace(caption),
+		MediaURL:   &url,
 	}
 	if err := s.events.Create(ctx, e); err != nil {
 		return nil, err
