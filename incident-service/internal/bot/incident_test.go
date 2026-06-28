@@ -195,7 +195,9 @@ func TestHandleIncidentCloseSendsSummaryAndReportToGeneralAndDeletesTopic(t *tes
 	now := time.Now()
 	api := newFakeAPI()
 	h := New(&fakeService{
-		report: func(int64, int64) (report.Document, error) { return report.Document{URL: "https://reports.example/r/abc.pdf"}, nil },
+		report: func(int64, int64) (report.Document, error) {
+			return report.Document{URL: "https://reports.example/r/abc.pdf"}, nil
+		},
 		closeInc: func(int64, int64, *int64, string) (*incident.Incident, error) {
 			return &incident.Incident{Title: "outage", CreatedAt: now, ClosedAt: &now}, nil
 		},
@@ -221,7 +223,9 @@ func TestHandleIncidentCloseLinksTelegraphTimeline(t *testing.T) {
 	now := time.Now()
 	api := newFakeAPI()
 	h := New(&fakeService{
-		report: func(int64, int64) (report.Document, error) { return report.Document{URL: "https://reports.example/r/abc.pdf"}, nil },
+		report: func(int64, int64) (report.Document, error) {
+			return report.Document{URL: "https://reports.example/r/abc.pdf"}, nil
+		},
 		publish: func(int64, int64) ([]string, error) {
 			return []string{"https://telegra.ph/timeline-1"}, nil
 		},
@@ -240,7 +244,9 @@ func TestHandleIncidentCloseStillClosesWhenReportFails(t *testing.T) {
 	now := time.Now()
 	api := newFakeAPI()
 	h := New(&fakeService{
-		report: func(int64, int64) (report.Document, error) { return report.Document{}, errs.New(errs.KindUnavailable, "report", "down") },
+		report: func(int64, int64) (report.Document, error) {
+			return report.Document{}, errs.New(errs.KindUnavailable, "report", "down")
+		},
 		closeInc: func(int64, int64, *int64, string) (*incident.Incident, error) {
 			return &incident.Incident{Title: "outage", CreatedAt: now, ClosedAt: &now}, nil
 		},
