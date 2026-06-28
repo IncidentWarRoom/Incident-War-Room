@@ -9,8 +9,8 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       report-service:
         condition: service_healthy
 
@@ -35,10 +35,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./incident-service/migration/0001_init_up.sql:/docker-entrypoint-initdb.d/0001_init.sql:ro
-      - ./incident-service/migration/0002_reporting_fields_up.sql:/docker-entrypoint-initdb.d/0002_reporting_fields.sql:ro
-      - ./incident-service/migration/0003_event_media_up.sql:/docker-entrypoint-initdb.d/0003_event_media.sql:ro
-      - ./incident-service/migration/0004_event_image_up.sql:/docker-entrypoint-initdb.d/0004_event_image.sql:ro
     ports:
       - "5432:5432"
     healthcheck:
@@ -46,6 +42,18 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  migrate:
+    image: postgres:17-alpine
+    env_file: .env
+    environment:
+      - POSTGRES_HOST=postgres
+    volumes:
+      - ./incident-service/migration:/migrations:ro
+    entrypoint: ["sh", "/migrations/apply.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
