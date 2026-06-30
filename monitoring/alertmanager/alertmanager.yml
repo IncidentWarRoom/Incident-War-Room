@@ -1,0 +1,12 @@
+route:
+  receiver: incident-war-room
+  group_by: ['alertname']
+  group_wait: 5s               # маленький, чтобы инцидент появлялся быстро в кадре
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  - name: incident-war-room
+    webhook_configs:
+      - url: 'http://incident-service:8080/webhooks/alertmanager'
+        send_resolved: false

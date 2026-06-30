@@ -51,7 +51,7 @@ func (m *TxManager) WithTx(ctx context.Context, fn func(incident.Repository, eve
 
 	if err := fn(NewIncidentRepository(tx), NewEventRepository(tx)); err != nil {
 		_ = tx.Rollback(ctx)
-		return err
+		return err							
 	}
 
 	if err := tx.Commit(ctx); err != nil {

@@ -26,6 +26,45 @@ services:
       timeout: 5s
       retries: 10
 
+  demo-app:
+    build: ./demo-app
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules.yml:/etc/prometheus/rules.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - demo-app
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    depends_on:
+      - incident-service
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_INCIDENT_API_BASE: http://localhost:8080
+        VITE_REPORT_API_BASE: http://localhost:8000
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - incident-service
+
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped

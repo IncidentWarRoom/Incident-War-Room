@@ -180,7 +180,7 @@ func (r *IncidentRepository) Close(ctx context.Context, id uuid.UUID, closedAt t
 		UPDATE incidents
 		SET status = $2, closed_at = $3
 		WHERE id = $1 AND status = $4`
-
+	
 	tag, err := r.db.Exec(ctx, query, id, incident.StatusClosed, closedAt, incident.StatusActive)
 	if err != nil {
 		return errs.Wrapf(errs.KindInternal, "repository.Incident.Close", err, "close incident")
