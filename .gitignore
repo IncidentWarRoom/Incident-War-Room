@@ -4,3 +4,4 @@
 *.exe
 *.out
 tmp/
+.DS_Store
