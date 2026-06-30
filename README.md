@@ -1,31 +1,36 @@
 # Incident War Room
 
-Incident War Room is a Telegram-native platform for managing production incidents and preserving incident knowledge in a structured form.
+Incident War Room is a self-hosted incident management platform that integrates with Telegram and monitoring systems to simplify production incident response.
 
-The system allows engineering teams to create incidents directly from Telegram group chats, record important investigation updates, track incident severity, maintain a chronological timeline of events, and automatically generate post-incident reports.
+The platform automatically creates dedicated Telegram Topics for incidents, records investigation updates as a structured timeline, generates AI-powered incident reports, and stores reports in S3-compatible object storage. It can also integrate with Prometheus Alertmanager to automatically create incidents when monitoring detects a failure.
 
 The platform consists of two core services:
 
-* **Incident Service (Go)** — handles Telegram integration, incident management, timeline tracking, data persistence, and report generation requests.
-* **Report Service (Python)** — generates PDF incident reports based on collected incident data.
+* **Incident Service (Go)** — handles Telegram integration, incident lifecycle management, monitoring integrations, timeline tracking, data persistence, and communication with external services.
+* **Report Service (Python)** — generates AI-enhanced PDF reports, integrates with object storage, and supports both S3 and inline report delivery modes.
 
 ## Key Features
 
-* Incident creation and management directly from Telegram
-* Timeline-based incident tracking
-* Severity management (Low, Medium, High)
-* Automatic participant collection
-* Incident report generation in PDF format
+* Telegram Topics for isolated incident discussions
+* Automatic incident creation from Prometheus Alertmanager
+* Manual incident creation directly from Telegram
+* Chronological incident timeline
+* AI-generated incident title and summary
+* PDF report generation
+* S3-compatible report storage with automatic fallback
+* Incident history and web dashboard
 * PostgreSQL-based persistence
-* Containerized deployment using Docker
+* Docker-based deployment
 
 ## Example Workflow
 
-1. Create an incident using `/incident create`.
-2. Add important investigation updates using `/incident <message>`.
-3. View the current timeline with `/timeline`.
-4. Adjust incident severity when required.
-5. Close the incident using `/incident close`.
-6. Receive an automatically generated PDF report in Telegram.
+1. An incident is created manually from Telegram or automatically by Alertmanager.
+2. A dedicated Telegram Topic is created for the incident.
+3. Engineers discuss the incident inside the Topic while the system records the timeline.
+4. AI generates an incident title and summary.
+5. The incident is resolved and the Topic is automatically removed.
+6. A PDF report is generated and delivered to Telegram.
+7. If S3 is configured, the report is stored in object storage; otherwise, it is delivered directly by the Report Service.
+8. The incident remains available through the web dashboard for future investigation and analysis.
 
-The project is designed as an MVP for engineering teams that already use Telegram as their primary communication platform and need a lightweight incident management solution without introducing additional tools into their workflow.
+The platform is designed for engineering teams that already use Telegram as their primary communication tool and want a lightweight, self-hosted incident management solution that can be deployed in their own infrastructure and integrated with existing monitoring systems.
