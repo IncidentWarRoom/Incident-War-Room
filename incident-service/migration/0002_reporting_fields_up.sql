@@ -3,5 +3,5 @@
 -- =====================
 
 ALTER TABLE incidents
-    ADD COLUMN telegraph_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
-    ADD COLUMN report_url     TEXT;
+    ADD COLUMN IF NOT EXISTS telegraph_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
+    ADD COLUMN IF NOT EXISTS report_url     TEXT;

@@ -3,4 +3,4 @@
 -- =====================
 
 ALTER TABLE incident_events
-    ADD COLUMN media_url TEXT;
+    ADD COLUMN IF NOT EXISTS media_url TEXT;
